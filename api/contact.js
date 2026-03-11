@@ -1,85 +1,101 @@
-import nodemailer from "nodemailer";
+const nodemailer = require("nodemailer");
 
-type Body = {
-  name?: string;
-  email?: string;
-  phone?: string;
-  subject?: string;
-  message?: string;
-  // Honeypot field (bots fill it)
-  company?: string;
-};
+// Request body shape
+/**
+ * @typedef {Object} Body
+ * @property {string} [name]
+ * @property {string} [email]
+ * @property {string} [phone]
+ * @property {string} [subject]
+ * @property {string} [message]
+ * @property {string} [company] Honeypot field – bots fill this
+ */
 
 // Simple in-memory rate limit (best‑effort; resets on cold start)
 const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
 const RATE_LIMIT_MAX = 5; // per IP per window
 
-const hits = new Map<string, { count: number; resetAt: number }>();
+/** @type {Map<string, { count: number; resetAt: number }>} */
+const hits = new Map();
 
-function rateLimit(ip: string) {
+function rateLimit(ip) {
   const now = Date.now();
   const entry = hits.get(ip);
   if (!entry || entry.resetAt <= now) {
     hits.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
-    return { ok: true as const };
+    return { ok: true };
   }
   if (entry.count >= RATE_LIMIT_MAX) {
-    return { ok: false as const, retryAfterMs: entry.resetAt - now };
+    return { ok: false, retryAfterMs: entry.resetAt - now };
   }
   entry.count += 1;
-  return { ok: true as const };
+  return { ok: true };
 }
 
-function getEnv(name: string) {
+function getEnv(name) {
   const v = process.env[name];
-  return v?.trim() || "";
+  return (v && v.trim()) || "";
 }
 
-export default async function handler(req: any, res: any) {
+/**
+ * Vercel Node.js API route handler (CommonJS)
+ * @param {import('http').IncomingMessage & { body?: Body; method?: string; headers?: any; socket: any }} req
+ * @param {import('http').ServerResponse} res
+ */
+async function handler(req, res) {
   try {
     if (req.method !== "POST") {
-      return res.status(405).json({ ok: false, error: "Method Not Allowed" });
+      res.statusCode = 405;
+      res.setHeader("Content-Type", "application/json");
+      return res.end(JSON.stringify({ ok: false, error: "Method Not Allowed" }));
     }
 
+    const ipHeader = /** @type {string|undefined} */ (req.headers["x-forwarded-for"]);
     const ip =
-      (req.headers["x-forwarded-for"] as string | undefined)
-        ?.split(",")[0]
-        ?.trim() ||
-      req.socket.remoteAddress ||
+      (ipHeader && ipHeader.split(",")[0].trim()) ||
+      req.socket?.remoteAddress ||
       "unknown";
 
     const rl = rateLimit(ip);
     if (!rl.ok) {
-      res.setHeader("Retry-After", Math.ceil(rl.retryAfterMs / 1000));
-      return res
-        .status(429)
-        .json({ ok: false, error: "Too many requests. Please try again shortly." });
+      res.statusCode = 429;
+      res.setHeader("Retry-After", Math.ceil(rl.retryAfterMs / 1000).toString());
+      res.setHeader("Content-Type", "application/json");
+      return res.end(
+        JSON.stringify({
+          ok: false,
+          error: "Too many requests. Please try again shortly.",
+        }),
+      );
     }
 
-    const body = (req.body ?? {}) as Body;
+    /** @type {Body} */
+    const body = (req.body || {});
 
     // Honeypot: if filled, pretend success without sending email
     if (body.company && body.company.trim().length > 0) {
-      return res.status(200).json({ ok: true });
+      res.statusCode = 200;
+      res.setHeader("Content-Type", "application/json");
+      return res.end(JSON.stringify({ ok: true }));
     }
 
-    const name = (body.name ?? "").trim();
-    const email = (body.email ?? "").trim();
-    const phone = (body.phone ?? "").trim();
-    const subject = (body.subject ?? "").trim();
-    const message = (body.message ?? "").trim();
+    const name = (body.name || "").trim();
+    const email = (body.email || "").trim();
+    const phone = (body.phone || "").trim();
+    const subject = (body.subject || "").trim();
+    const message = (body.message || "").trim();
 
     if (name.length < 2) {
-      return res.status(400).json({ ok: false, error: "Invalid name" });
+      return jsonError(res, 400, "Invalid name");
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return res.status(400).json({ ok: false, error: "Invalid email" });
+      return jsonError(res, 400, "Invalid email");
     }
     if (subject.length < 2) {
-      return res.status(400).json({ ok: false, error: "Invalid subject" });
+      return jsonError(res, 400, "Invalid subject");
     }
     if (message.length < 10) {
-      return res.status(400).json({ ok: false, error: "Invalid message" });
+      return jsonError(res, 400, "Invalid message");
     }
 
     const to = getEnv("CONTACT_EMAIL_TO");
@@ -88,11 +104,11 @@ export default async function handler(req: any, res: any) {
     const fromName = process.env.CONTACT_EMAIL_FROM_NAME || "SSG Job Consultants";
 
     if (!to || !user || !pass) {
-      return res.status(500).json({
-        ok: false,
-        error:
-          "Email service is not configured. Please set CONTACT_EMAIL_TO/USER/PASS in your environment.",
-      });
+      return jsonError(
+        res,
+        500,
+        "Email service is not configured. Please set CONTACT_EMAIL_TO/USER/PASS in your environment.",
+      );
     }
 
     const transporter = nodemailer.createTransport({
@@ -231,27 +247,51 @@ export default async function handler(req: any, res: any) {
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error("Email send failed:", err);
-      return res.status(500).json({
-        ok: false,
-        error: "Email send failed",
-        detail: err instanceof Error ? err.message : String(err),
-      });
+      return jsonError(
+        res,
+        500,
+        "Email send failed",
+        err instanceof Error ? err.message : String(err),
+      );
     }
 
-    return res.status(200).json({ ok: true });
+    res.statusCode = 200;
+    res.setHeader("Content-Type", "application/json");
+    return res.end(JSON.stringify({ ok: true }));
   } catch (err) {
     // eslint-disable-next-line no-console
-    console.error("Email send failed:", err);
-    return res.status(500).json({ ok: false, error: "Failed to send message" });
+    console.error("Unhandled error in contact handler:", err);
+    return jsonError(res, 500, "Failed to send message");
   }
 }
 
-function escapeHtml(s: string) {
-  return s
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
+
+function jsonError(res, status, error, detail) {
+  res.statusCode = status;
+  res.setHeader("Content-Type", "application/json");
+  res.end(
+    JSON.stringify(
+      detail
+        ? {
+            ok: false,
+            error,
+            detail,
+          }
+        : {
+            ok: false,
+            error,
+          },
+    ),
+  );
+}
+
+module.exports = handler;
 
