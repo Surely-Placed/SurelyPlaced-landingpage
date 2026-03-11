@@ -80,7 +80,21 @@ export function LeadSection(props: Props) {
             </div>
             <div>
               <label className="text-xs font-medium text-slate-100">
-                College / University
+                Phone number*
+              </label>
+              <input
+                type="tel"
+                name="phone"
+                value={form.phone}
+                onChange={onChange}
+                className="mt-1 w-full rounded-lg border border-slate-600/60 bg-slate-900/40 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30"
+                placeholder="+1 555 123 4567"
+                required
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-slate-100">
+                College / University*
               </label>
               <input
                 type="text"
@@ -89,11 +103,12 @@ export function LeadSection(props: Props) {
                 onChange={onChange}
                 className="mt-1 w-full rounded-lg border border-slate-600/60 bg-slate-900/40 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30"
                 placeholder="Your college or university"
+                required
               />
             </div>
             <div>
               <label className="text-xs font-medium text-slate-100">
-                Current Designation
+                Current Designation*
               </label>
               <input
                 type="text"
@@ -102,6 +117,7 @@ export function LeadSection(props: Props) {
                 onChange={onChange}
                 className="mt-1 w-full rounded-lg border border-slate-600/60 bg-slate-900/40 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30"
                 // placeholder="3rd year B.Tech, recent graduate, etc."
+                required
               />
             </div>
             <div>
@@ -127,7 +143,7 @@ export function LeadSection(props: Props) {
                 <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-slate-900/40 border-t-slate-900" />
               )}
               <span>
-                {submitting ? "Submitting..." : "Share Your FAANG / MAANG goals"}
+                {submitting ? "Submitting..." : "Book Your Call Today"}
               </span>
             </button>
             <p className="text-[11px] text-slate-400">

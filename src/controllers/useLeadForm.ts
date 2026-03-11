@@ -35,6 +35,7 @@ export function useLeadForm(options?: UseLeadFormOptions) {
         "",
         form.company ? `College / University: ${form.company}` : "",
         form.role ? `Current Designation: ${form.role}` : "",
+        form.phone ? `Phone: ${form.phone}` : "",
       ]
         .filter(Boolean)
         .join("\n");
@@ -47,6 +48,7 @@ export function useLeadForm(options?: UseLeadFormOptions) {
         body: JSON.stringify({
           name: form.name,
           email: form.email,
+          phone: form.phone,
           subject,
           message: messageLines,
           // Honeypot field – always empty for real users

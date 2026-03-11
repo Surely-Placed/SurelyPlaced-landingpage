@@ -106,9 +106,9 @@ export function Hero(props: Props) {
                 />
               </div>
               <div>
-            <label className="text-xs font-medium text-slate-700">
+                <label className="text-xs font-medium text-slate-700">
                   Email*
-            </label>
+                </label>
                 <input
                   type="email"
                   name="email"
@@ -120,10 +120,24 @@ export function Hero(props: Props) {
                 />
               </div>
             </div>
+            <div>
+              <label className="text-xs font-medium text-slate-700">
+                Phone number*
+              </label>
+              <input
+                type="tel"
+                name="phone"
+                value={form.phone}
+                onChange={onChange}
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                placeholder="+1 555 123 4567"
+                required
+              />
+            </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="text-xs font-medium text-slate-700">
-                  College / University
+                  College / University*
                 </label>
                 <input
                   type="text"
@@ -132,11 +146,13 @@ export function Hero(props: Props) {
                   onChange={onChange}
                   className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                   placeholder="Your college or university"
+                  required
                 />
               </div>
               <div>
                 <label className="text-xs font-medium text-slate-700">
-                  Current Designation                </label>
+                  Current Designation*
+                </label>
                 <input
                   type="text"
                   name="role"
@@ -144,6 +160,7 @@ export function Hero(props: Props) {
                   onChange={onChange}
                   className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                   // placeholder="3rd year B.Tech, recent graduate, etc."
+                  required
                 />
               </div>
             </div>
@@ -170,7 +187,7 @@ export function Hero(props: Props) {
                 <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
               )}
               <span>
-                {submitting ? "Submitting..." : "Book Your student roadmap call"}
+                {submitting ? "Submitting..." : "Book Your Call Today"}
               </span>
             </button>
             <p className="text-[11px] text-slate-400">

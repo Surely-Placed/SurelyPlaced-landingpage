@@ -219,14 +219,24 @@ export default async function handler(req: any, res: any) {
       </div>
     `;
 
-    await transporter.sendMail({
-      to,
-      from: `${fromName} <${user}>`,
-      replyTo: email,
-      subject: safeSubject,
-      text,
-      html,
-    });
+    try {
+      await transporter.sendMail({
+        to,
+        from: `${fromName} <${user}>`,
+        replyTo: email,
+        subject: safeSubject,
+        text,
+        html,
+      });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("Email send failed:", err);
+      return res.status(500).json({
+        ok: false,
+        error: "Email send failed",
+        detail: err instanceof Error ? err.message : String(err),
+      });
+    }
 
     return res.status(200).json({ ok: true });
   } catch (err) {
