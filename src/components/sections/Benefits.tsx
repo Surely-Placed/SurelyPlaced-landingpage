@@ -1,22 +1,18 @@
 import { Reveal } from "../Reveal";
 
 export function Benefits() {
-  const benefits = [
+  const steps = [
     {
-      title: "Mentorship & training",
-      body: "Hands‑on guidance, feedback, and structured upskilling paths that move you from confusion to clarity about your next role.",
+      title: "Book a call",
+      body: "Schedule a quick consultation to share your background, target roles, and timelines.",
     },
     {
-      title: "Professional resume building",
-      body: "Market‑tested, ATS‑optimised resumes and profiles that frame your experience for decision‑makers—not just algorithms.",
+      title: "Get your roadmap",
+      body: "We outline a focused plan across resume, profile, and job search so you know what happens next.",
     },
     {
-      title: "Strategic job applications",
-      body: "Smart, high‑leverage applications focused on the right companies and roles, instead of spraying and praying.",
-    },
-    {
-      title: "Specialised consultants",
-      body: "A team that understands FAANG/MAANG and top product companies—so your preparation, story, and target roles stay aligned.",
+      title: "Move towards offers",
+      body: "You execute with our support on applications and prep, while we help you stay on track.",
     },
   ];
 
@@ -28,28 +24,34 @@ export function Benefits() {
       <div className="container-narrow">
         <Reveal className="mb-8 text-center sm:mb-10">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-teal">
-            Why choose SurelyPlaced
+            Why choose us
           </p>
           <h2 className="mt-2 font-display text-2xl leading-tight text-slate-900 sm:text-3xl">
-            Comprehensive career solutions for serious candidates.
+            How SurelyPlaced works for you.
           </h2>
           <p className="mt-3 text-sm text-slate-600 sm:text-base">
-            Strategic intervention, modern hiring signals, and hands‑on
-            execution—engineered to unlock your next full‑time role.
+            A simple three‑step flow from first call to concrete progress on your job search.
           </p>
         </Reveal>
 
-        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-          {benefits.map((b, idx) => (
-            <Reveal key={b.title} delay={idx * 90}>
-              <div className="group flex h-full flex-col rounded-2xl bg-white/90 p-5 shadow-soft ring-1 ring-slate-100 transition hover:-translate-y-1.5 hover:shadow-elevated">
-                <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-teal/10 text-teal group-hover:bg-teal/15">
-                  <span className="text-lg">★</span>
+        <div className="grid gap-6 md:grid-cols-3">
+          {steps.map((step, idx) => (
+            <Reveal key={step.title} delay={idx * 90}>
+              <div className="flex h-full flex-col items-center rounded-2xl bg-white/90 p-6 text-center shadow-soft ring-1 ring-slate-100 transition hover:-translate-y-1.5 hover:shadow-elevated">
+                <div className="relative mb-4 flex items-center justify-center">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-teal/10 text-teal">
+                    <span className="text-lg">
+                      {idx === 0 ? "📞" : idx === 1 ? "👥" : "🎯"}
+                    </span>
+                  </div>
+                  <div className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-white shadow-soft">
+                    {idx + 1}
+                  </div>
                 </div>
-                <h3 className="mt-4 font-display text-base text-slate-900">
-                  {b.title}
+                <h3 className="font-display text-base text-slate-900">
+                  {step.title}
                 </h3>
-                <p className="mt-2 flex-1 text-sm text-slate-600">{b.body}</p>
+                <p className="mt-2 text-sm text-slate-600">{step.body}</p>
               </div>
             </Reveal>
           ))}

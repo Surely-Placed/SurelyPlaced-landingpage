@@ -142,9 +142,7 @@ export function LeadSection(props: Props) {
               {submitting && (
                 <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-slate-900/40 border-t-slate-900" />
               )}
-              <span>
-                {submitting ? "Submitting..." : "Book Your Call Today"}
-              </span>
+              <span>{submitting ? "Submitting..." : "Submit Form"}</span>
             </button>
             <p className="text-[11px] text-slate-400">
               By submitting, you agree to be contacted regarding this request. We

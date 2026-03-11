@@ -5,35 +5,23 @@ export function Faq() {
   const faqs = [
     {
       q: "What does SurelyPlaced help me with?",
-      a: "We support students and early‑career engineers across the full job‑search cycle—from building an ATS‑optimised resume and LinkedIn profile to identifying the right target roles, tailoring your story, and running high‑volume, targeted applications on your behalf. Along the way, you also get guidance on interview prep, offer comparison, and navigating timelines so you can take clearer decisions instead of guessing your next step.",
+      a: "We support students and early‑career engineers across the full job‑search cycle—from building an ATS‑optimised resume and LinkedIn profile to identifying the right target roles, tailoring your story, and running high‑volume, targeted applications on your behalf.",
     },
     {
       q: "What kind of roles and companies do you target?",
-      a: "We focus primarily on full‑time software and data roles at reputed organisations—such as Amazon, Google, Walmart, Oracle, Microsoft, and other top global product companies—along with high‑growth startups and strong Tier‑2 product firms. The exact target list is customised based on your skills, current experience, and preferred locations, so we are not just applying randomly but aligning with where you realistically have a strong chance of converting.",
+      a: "We focus primarily on full‑time software and data roles at reputed organisations—such as Amazon, Google, Walmart, Oracle, Microsoft, and other top global product companies—along with high‑growth startups and strong Tier‑2 product firms.",
     },
     {
       q: "How does the process work from start to finish?",
-      a: "We begin with a detailed consultation call where we understand your background, constraints, and target timelines. From there, we collect the necessary details to build your ATS‑optimised resume and profiles, usually within 5–7 working days. Once that foundation is ready, we move into structured, high‑volume applications, track responses, and help you prioritise assessments and interviews. Throughout the engagement, we continue to tweak your targeting and messaging based on what the market is responding to.",
+      a: "We begin with a detailed consultation call, build your ATS‑optimised resume and profiles, and then move into structured, high‑volume applications plus support on assessments and interviews.",
     },
     {
       q: "How many applications will be made on my behalf?",
-      a: "Our internal marketing team typically drives 1,000–1,500 targeted applications per month, depending on your profile and the kinds of companies you want to prioritise. The goal is not just volume for the sake of it—we focus on roles where your skills match the requirements and where there is a real chance of getting to interviews. This keeps a steady pipeline of assessments and conversations coming in, instead of you facing long dry spells.",
+      a: "Our internal marketing team typically drives 1,000–1,500 targeted applications per month, focusing on roles where your skills match the requirements and there is a real chance of getting interviews.",
     },
     {
       q: "Is SurelyPlaced a placement guarantee or pay‑after‑placement service?",
-      a: "No. SurelyPlaced is not a placement guarantee or pay‑after‑placement model, and we do not promise a specific job title, company, or compensation. What we commit to is a structured process: stronger positioning through better resumes and profiles, a significantly higher volume of relevant applications, and honest feedback on where you stand. This approach maximises your chances of landing interviews and offers, without making unrealistic promises.",
-    },
-    {
-      q: "Do you only work with FAANG/MAANG companies?",
-      a: "FAANG/MAANG and similar Tier‑1 product companies are a major focus because many candidates aspire to those brands. At the same time, we actively include strong Tier‑2 product firms, fast‑growing startups, and other global tech companies where the work, team, and growth curve may be even better for your stage. This mix keeps your options open instead of forcing your search into a very narrow set of logos.",
-    },
-    {
-      q: "Can I continue my own job search while working with you?",
-      a: "Absolutely. In fact, we encourage it. Many candidates combine our structured, high‑volume application engine with their own networking, referrals, and alumni connects. When you do both in parallel, you dramatically increase the number of serious opportunities in your pipeline, while also ensuring that you are not missing out on hidden roles that come through personal connections.",
-    },
-    {
-      q: "What do you expect from me during the engagement?",
-      a: "We expect you to share accurate information about your academics and work history, be responsive on email and WhatsApp, and complete online assessments and coding tests within the given timelines. We also ask you to keep us updated on every interview or recruiter touchpoint so we can refine your targeting and preparation. When we both treat this like a serious project, the results are consistently stronger.",
+      a: "No. SurelyPlaced is not a placement guarantee or pay‑after‑placement model; instead, we provide a structured process, stronger positioning, and a higher volume of relevant applications to maximise your chances of landing offers.",
     },
   ];
 

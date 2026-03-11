@@ -101,7 +101,7 @@ async function handler(req, res) {
     const to = getEnv("CONTACT_EMAIL_TO");
     const user = getEnv("CONTACT_EMAIL_USER");
     const pass = getEnv("CONTACT_EMAIL_PASS");
-    const fromName = process.env.CONTACT_EMAIL_FROM_NAME || "SSG Job Consultants";
+    const fromName = process.env.CONTACT_EMAIL_FROM_NAME || "Surely Placed";
 
     if (!to || !user || !pass) {
       return jsonError(
@@ -134,6 +134,10 @@ async function handler(req, res) {
       .filter(Boolean)
       .join("\n");
 
+    const htmlMessage = escapeHtml(message)
+      .trim()
+      .replace(/\n/g, "<br />");
+
     const html = `
       <div style="background:#020617;padding:32px 16px;">
         <div style="max-width:720px;margin:0 auto;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#0f172a;">
@@ -142,7 +146,7 @@ async function handler(req, res) {
             <!-- Header strip -->
             <div style="padding:20px 24px 18px;border-bottom:1px solid rgba(148,163,184,0.18);background:linear-gradient(120deg,rgba(16,185,129,0.18),rgba(56,189,248,0.12),rgba(15,23,42,0.9));display:flex;align-items:center;justify-content:space-between;">
               <div>
-                <div style="font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#a5f3fc;font-weight:700;">SSG Job Consultants</div>
+                <div style="font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#a5f3fc;font-weight:700;">Surely Placed</div>
                 <div style="margin-top:6px;font-size:21px;line-height:1.25;font-weight:650;color:#e5f1ff;">
                   New candidate enquiry
                 </div>
@@ -210,13 +214,13 @@ async function handler(req, res) {
               </table>
 
               <!-- Message block -->
-              <div style="margin-top:18px;">
+                <div style="margin-top:18px;">
                 <div style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#9ca3af;font-weight:700;">
                   Target roles & timeline
                 </div>
-                <div style="margin-top:8px;border-radius:18px;background:radial-gradient(circle at top left,rgba(56,189,248,0.22),rgba(15,23,42,0.96));border:1px solid rgba(148,163,184,0.5);padding:14px 15px;box-shadow:0 14px 28px rgba(15,23,42,0.6);font-size:13px;color:#e5e7eb;white-space:pre-wrap;line-height:1.6;">
-                  ${escapeHtml(message)}
-                </div>
+                  <div style="margin-top:8px;border-radius:18px;background:radial-gradient(circle at top left,rgba(56,189,248,0.22),rgba(15,23,42,0.96));border:1px solid rgba(148,163,184,0.5);padding:14px 15px;box-shadow:0 14px 28px rgba(15,23,42,0.6);font-size:13px;color:#e5e7eb;line-height:1.6;white-space:normal;text-align:left;">
+                    ${htmlMessage}
+                  </div>
               </div>
 
               <!-- Footer meta -->

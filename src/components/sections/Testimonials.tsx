@@ -23,19 +23,13 @@ export function Testimonials() {
 
   return (
     <section id="testimonials" className="container-narrow py-14 sm:py-18 scroll-mt-24">
-      <Reveal className="mb-8 flex flex-col gap-3 sm:mb-10 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-teal">
-            Candidate stories
-          </p>
-          <h2 className="mt-1 font-display text-2xl text-slate-900 sm:text-3xl">
-            What our candidates say about us.
-          </h2>
-        </div>
-        <p className="max-w-md text-sm text-slate-600">
-          We work closely with students and early‑career engineers to turn a vague
-          job search into a structured path towards full‑time offers.
+      <Reveal className="mb-8 text-center sm:mb-10">
+        <p className="text-xs font-semibold uppercase tracking-wide text-teal">
+          Candidate stories
         </p>
+        <h2 className="mt-1 font-display text-2xl text-slate-900 sm:text-3xl">
+          What our candidates say about us.
+        </h2>
       </Reveal>
 
       <div className="grid gap-5 md:grid-cols-3">

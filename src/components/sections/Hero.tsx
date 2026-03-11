@@ -31,48 +31,50 @@ export function Hero(props: Props) {
           <span className="text-primary">full‑time roles</span>{" "}
           at leading companies.
         </h1>
-        <p className="max-w-xl text-sm leading-relaxed text-slate-200 sm:text-base">
-          SurelyPlaced helps students and early‑career engineers follow a structured,
-          end‑to‑end path into full‑time roles at FAANG/MAANG and other top product
-          companies—from ATS‑optimised resumes to targeted applications and interview
-          opportunities.
-        </p>
-        <ul className="grid gap-3 text-sm text-slate-100 sm:grid-cols-2">
-          <li className="flex items-center gap-2">
-            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-xs text-primary">
-              ✓
+        <div className="space-y-4 hidden lg:block">
+          <p className="max-w-xl text-sm leading-relaxed text-slate-200 sm:text-base">
+            SurelyPlaced helps students and early‑career engineers follow a structured,
+            end‑to‑end path into full‑time roles at FAANG/MAANG and other top product
+            companies—from ATS‑optimised resumes to targeted applications and interview
+            opportunities.
+          </p>
+          <ul className="grid gap-3 text-sm text-slate-100 sm:grid-cols-2">
+            <li className="flex items-center gap-2">
+              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-xs text-primary">
+                ✓
+              </span>
+              <span>$157M+ worth of offers secured across candidates</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-xs text-primary">
+                ✓
+              </span>
+              <span>1,000–1,500 targeted applications handled every month</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-xs text-primary">
+                ✓
+              </span>
+              <span>ATS‑optimised, market‑tested resumes and profiles</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-xs text-primary">
+                ✓
+              </span>
+              <span>End‑to‑end support from resume to interviews</span>
+            </li>
+          </ul>
+          <div className="flex flex-wrap items-center gap-4 text-xs text-slate-300">
+            <div className="flex -space-x-2">
+              <div className="h-7 w-7 rounded-full bg-primary/80" />
+              <div className="h-7 w-7 rounded-full bg-teal/80" />
+              <div className="h-7 w-7 rounded-full bg-slate-800" />
+            </div>
+            <span>
+              Backing candidates targeting roles at Amazon, Google, Microsoft, and other
+              leading global companies.
             </span>
-            <span>$157M+ worth of offers secured across candidates</span>
-          </li>
-          <li className="flex items-center gap-2">
-            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-xs text-primary">
-              ✓
-            </span>
-            <span>1,000–1,500 targeted applications handled every month</span>
-          </li>
-          <li className="flex items-center gap-2">
-            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-xs text-primary">
-              ✓
-            </span>
-            <span>ATS‑optimised, market‑tested resumes and profiles</span>
-          </li>
-          <li className="flex items-center gap-2">
-            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-xs text-primary">
-              ✓
-            </span>
-            <span>End‑to‑end support from resume to interviews</span>
-          </li>
-        </ul>
-        <div className="flex flex-wrap items-center gap-4 text-xs text-slate-300">
-          <div className="flex -space-x-2">
-            <div className="h-7 w-7 rounded-full bg-primary/80" />
-            <div className="h-7 w-7 rounded-full bg-teal/80" />
-            <div className="h-7 w-7 rounded-full bg-slate-800" />
           </div>
-          <span>
-            Backing candidates targeting roles at Amazon, Google, Microsoft, and other
-            leading global companies.
-          </span>
         </div>
         </div>
 
@@ -186,14 +188,59 @@ export function Hero(props: Props) {
               {submitting && (
                 <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
               )}
-              <span>
-                {submitting ? "Submitting..." : "Book Your Call Today"}
-              </span>
+              <span>{submitting ? "Submitting..." : "Submit Form"}</span>
             </button>
             <p className="text-[11px] text-slate-400">
               We only use your details to follow up on this request. No spam, ever.
             </p>
           </form>
+        </div>
+      </div>
+
+      {/* Mobile-only sub-content: appears below the form */}
+      <div className="container-narrow mt-6 space-y-4 px-1 lg:hidden">
+        <p className="max-w-xl text-sm leading-relaxed text-slate-200 sm:text-base">
+          SurelyPlaced helps students and early‑career engineers follow a structured,
+          end‑to‑end path into full‑time roles at FAANG/MAANG and other top product
+          companies—from ATS‑optimised resumes to targeted applications and interview
+          opportunities.
+        </p>
+        <ul className="grid gap-3 text-sm text-slate-100 sm:grid-cols-2">
+          <li className="flex items-center gap-2">
+            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-xs text-primary">
+              ✓
+            </span>
+            <span>$157M+ worth of offers secured across candidates</span>
+          </li>
+          <li className="flex items-center gap-2">
+            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-xs text-primary">
+              ✓
+            </span>
+            <span>1,000–1,500 targeted applications handled every month</span>
+          </li>
+          <li className="flex items-center gap-2">
+            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-xs text-primary">
+              ✓
+            </span>
+            <span>ATS‑optimised, market‑tested resumes and profiles</span>
+          </li>
+          <li className="flex items-center gap-2">
+            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-xs text-primary">
+              ✓
+            </span>
+            <span>End‑to‑end support from resume to interviews</span>
+          </li>
+        </ul>
+        <div className="flex flex-wrap items-center gap-4 text-xs text-slate-300">
+          <div className="flex -space-x-2">
+            <div className="h-7 w-7 rounded-full bg-primary/80" />
+            <div className="h-7 w-7 rounded-full bg-teal/80" />
+            <div className="h-7 w-7 rounded-full bg-slate-800" />
+          </div>
+          <span>
+            Backing candidates targeting roles at Amazon, Google, Microsoft, and other
+            leading global companies.
+          </span>
         </div>
       </div>
       </div>
