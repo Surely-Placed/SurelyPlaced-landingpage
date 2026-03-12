@@ -6,6 +6,9 @@ import { ToastContainer } from "./components/ui/Toast";
 
 function App() {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [submitted, setSubmitted] = useState(
+    typeof window !== "undefined" && window.location.hash === "#/thankyou",
+  );
 
   const pushToast = (toast: Toast) => {
     // Always show only the latest toast
@@ -29,25 +32,39 @@ function App() {
   const heroForm = useLeadForm({
     onSuccess: (toast) => {
       pushToast(toast);
-      window.location.hash = "#thank-you";
+      setSubmitted(true);
+      window.location.hash = "#/thankyou";
     },
     onError: pushToast,
   });
   const leadForm = useLeadForm({
     onSuccess: (toast) => {
       pushToast(toast);
-      window.location.hash = "#thank-you";
+      setSubmitted(true);
+      window.location.hash = "#/thankyou";
     },
     onError: pushToast,
   });
 
-  const submitted = heroForm.submitted || leadForm.submitted;
-
   const handleReset = () => {
     heroForm.reset();
     leadForm.reset();
-    window.location.hash = "#home";
+    setSubmitted(false);
+    window.location.hash = "#/";
   };
+
+  // Keep UI in sync if user lands directly on /#/thankyou or /#/
+  useEffect(() => {
+    const onHashChange = () => {
+      if (window.location.hash === "#/thankyou") {
+        setSubmitted(true);
+      } else if (window.location.hash === "#/" || window.location.hash === "" || window.location.hash === "#home") {
+        setSubmitted(false);
+      }
+    };
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
 
   return (
     <>
