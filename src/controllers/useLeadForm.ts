@@ -1,5 +1,5 @@
 import { useState, ChangeEvent, FormEvent } from "react";
-import { clearStoredUtmSource, getUtmSourceForSubmit } from "../lib/utm";
+import { clearStoredUtmSource, getUtmFieldsForSubmit } from "../lib/utm";
 import { LeadFormValues, initialLeadFormValues } from "../models/lead";
 
 export type Toast = {
@@ -42,7 +42,7 @@ export function useLeadForm(options?: UseLeadFormOptions) {
           company: form.company,
           current_role: form.currentRole,
           targeted_role: form.targetedRole,
-          utm_source: getUtmSourceForSubmit(),
+          ...getUtmFieldsForSubmit(),
         }),
       });
 
@@ -83,4 +83,5 @@ export function useLeadForm(options?: UseLeadFormOptions) {
 
   return { form, submitting, submitted, handleChange, handleSubmit, reset };
 }
+
 

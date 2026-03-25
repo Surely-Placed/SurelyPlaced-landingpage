@@ -1,11 +1,11 @@
-// Forwards validated leads to a Google Apps Script Web App (doPost) that appends
+﻿// Forwards validated leads to a Google Apps Script Web App (doPost) that appends
 // rows to your sheet. No GCP credentials or googleapis on this server.
 
 const path = require("node:path");
 const fs = require("node:fs");
 
 // This file is imported from vite.config.ts before that file runs `dotenv.config()`,
-// so load repo `.env` here using `__dirname` (always `…/api`, never a Vite temp path).
+// so load repo `.env` here using `__dirname` (always `â€¦/api`, never a Vite temp path).
 (function loadRepoDotenv() {
   const hasUrl =
     (process.env.GOOGLE_APPS_SCRIPT_URL || "").trim() ||
@@ -34,10 +34,16 @@ const fs = require("node:fs");
  * @property {string} [company] College / university (sheet: university)
  * @property {string} [current_role]
  * @property {string} [targeted_role] What roles they are targeting
- * @property {string} [utm_source] Marketing source (e.g. linkedin); default direct
+ * @property {string} [utm_source]
+ * @property {string} [utm_medium]
+ * @property {string} [utm_campaign]
+ * @property {string} [utm_adset]
+ * @property {string} [utm_content]
+ * @property {string} [utm_term]
+ * @property {string} [utm_placement]
  */
 
-// Simple in-memory rate limit (best‑effort; resets on cold start)
+// Simple in-memory rate limit (bestâ€‘effort; resets on cold start)
 const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
 const RATE_LIMIT_MAX = 5; // per IP per window
 
@@ -83,7 +89,7 @@ function normalizeWebAppUrl(raw) {
   if (!path.endsWith("/exec")) {
     return {
       error:
-        'GOOGLE_APPS_SCRIPT_URL must end with /exec. In Apps Script: Deploy → Manage deployments → copy the Web app URL from that deployment (it ends with /exec). Do not use a URL ending in /dev, /2, or the script editor link.',
+        'GOOGLE_APPS_SCRIPT_URL must end with /exec. In Apps Script: Deploy â†’ Manage deployments â†’ copy the Web app URL from that deployment (it ends with /exec). Do not use a URL ending in /dev, /2, or the script editor link.',
     };
   }
   parsed.pathname = path;
@@ -101,10 +107,17 @@ function normalizeUtmSource(raw) {
   return t;
 }
 
+function normalizeUtmField(raw) {
+  const t = String(raw ?? "").trim().slice(0, 180);
+  if (!t) return "";
+  if (!/^[\w\-./+\s@%]+$/i.test(t)) return "";
+  return t;
+}
+
 const MAX_SCRIPT_REDIRECTS = 8;
 
 /**
- * Apps Script returns 302 from script.google.com → script.googleusercontent.com.
+ * Apps Script returns 302 from script.google.com â†’ script.googleusercontent.com.
  * The second URL only allows GET/HEAD (Allow: HEAD, GET). Re-POSTing causes HTTP 405.
  * Chrome follows 302 with GET; Google ties the original POST body to the redirect URL.
  * @see https://stackoverflow.com/questions/74878421/google-apps-script-return-405-for-post-request
@@ -156,15 +169,15 @@ function detailForAppsScriptFailure(status, text) {
       return (
         "HTTP " +
         status +
-        " (often “Page not found”): GOOGLE_APPS_SCRIPT_URL is wrong or not a Web App deployment. " +
-        'In Apps Script: Deploy → Manage deployments → under “Web app” copy the URL that ends with /exec only. ' +
+        " (often â€œPage not foundâ€): GOOGLE_APPS_SCRIPT_URL is wrong or not a Web App deployment. " +
+        'In Apps Script: Deploy â†’ Manage deployments â†’ under â€œWeb appâ€ copy the URL that ends with /exec only. ' +
         "URLs ending in /2 or /dev are not the Web App URL. Redeploy with Who has access: Anyone if needed."
       );
     }
     return (
       "Google returned an HTML page instead of running your script (HTTP " +
       status +
-      "). In Apps Script: Deploy → Manage deployments → edit the Web app → set Who has access to Anyone, save, copy the new /exec URL into GOOGLE_APPS_SCRIPT_URL, then try again."
+      "). In Apps Script: Deploy â†’ Manage deployments â†’ edit the Web app â†’ set Who has access to Anyone, save, copy the new /exec URL into GOOGLE_APPS_SCRIPT_URL, then try again."
     );
   }
   return raw.slice(0, 200);
@@ -248,6 +261,12 @@ async function handler(req, res) {
     const scriptUrl = normalized.url;
 
     const utmSource = normalizeUtmSource(body.utm_source);
+    const utmMedium = normalizeUtmField(body.utm_medium);
+    const utmCampaign = normalizeUtmField(body.utm_campaign);
+    const utmAdset = normalizeUtmField(body.utm_adset);
+    const utmContent = normalizeUtmField(body.utm_content);
+    const utmTerm = normalizeUtmField(body.utm_term);
+    const utmPlacement = normalizeUtmField(body.utm_placement);
 
     const payload = {
       submittedAt: new Date().toISOString(),
@@ -258,6 +277,12 @@ async function handler(req, res) {
       current_role: currentRole,
       targeted_role: targetedRole,
       utm_source: utmSource,
+      utm_medium: utmMedium,
+      utm_campaign: utmCampaign,
+      utm_adset: utmAdset,
+      utm_content: utmContent,
+      utm_term: utmTerm,
+      utm_placement: utmPlacement,
     };
     const scriptSecret =
       getEnv("GOOGLE_APPS_SCRIPT_SECRET") || getEnv("FORM_WEBHOOK_SECRET");
@@ -345,3 +370,4 @@ function jsonError(res, status, error, detail) {
 }
 
 module.exports = handler;
+

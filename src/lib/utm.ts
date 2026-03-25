@@ -1,25 +1,46 @@
-const STORAGE_KEY = "sp_utm_source";
-/** After a successful lead submit: do not re-infer from `document.referrer` until a new `utm_*` appears in the URL. */
-const IGNORE_REFERRER_UNTIL_UTM_KEY = "sp_utm_ignore_referrer";
+﻿const IGNORE_REFERRER_UNTIL_UTM_KEY = "sp_utm_ignore_referrer";
+const UTM_FIELDS = [
+  "utm_source",
+  "utm_medium",
+  "utm_campaign",
+  "utm_adset",
+  "utm_content",
+  "utm_term",
+  "utm_placement",
+] as const;
+type UtmField = (typeof UTM_FIELDS)[number];
+type UtmPayload = Record<UtmField, string>;
+const STORAGE_KEY_BY_FIELD: Record<UtmField, string> = {
+  utm_source: "sp_utm_source",
+  utm_medium: "sp_utm_medium",
+  utm_campaign: "sp_utm_campaign",
+  utm_adset: "sp_utm_adset",
+  utm_content: "sp_utm_content",
+  utm_term: "sp_utm_term",
+  utm_placement: "sp_utm_placement",
+};
 
-/**
- * Query string from the main URL or from the hash (e.g. `/#/?utm_source=linkedin`).
- */
-function getUtmFromLocation(): string | null {
-  if (typeof window === "undefined") return null;
+/** Query string from the main URL or from the hash (e.g. `/#/?utm_source=linkedin`). */
+function getUtmParamsFromLocation(): Partial<UtmPayload> {
+  const out: Partial<UtmPayload> = {};
+  if (typeof window === "undefined") return out;
   const { search, hash } = window.location;
+  const read = (params: URLSearchParams) => {
+    for (const key of UTM_FIELDS) {
+      const v = params.get(key);
+      if (v != null && v.trim().length > 0) {
+        out[key] = v.trim();
+      }
+    }
+  };
   if (search.length > 1) {
-    const p = new URLSearchParams(search);
-    const v = p.get("utm_source");
-    if (v != null && v.trim().length > 0) return v.trim();
+    read(new URLSearchParams(search));
   }
   const q = hash.indexOf("?");
   if (q >= 0) {
-    const p = new URLSearchParams(hash.slice(q + 1));
-    const v = p.get("utm_source");
-    if (v != null && v.trim().length > 0) return v.trim();
+    read(new URLSearchParams(hash.slice(q + 1)));
   }
-  return null;
+  return out;
 }
 
 /** Sheet + analytics label: always `instagram`, never `ig`. */
@@ -31,7 +52,7 @@ function canonicalizeUtmSource(raw: string): string {
 
 /**
  * Map document.referrer host to a short utm_source when the user did not use tagged links.
- * Referrer can be empty (privacy, HTTPS policies, in-app browsers) — then we fall back to "direct".
+ * Referrer can be empty (privacy, HTTPS policies, in-app browsers) â€” then we fall back to "direct".
  */
 function inferSourceFromReferrer(): string | null {
   if (typeof document === "undefined") return null;
@@ -76,49 +97,77 @@ function inferSourceFromReferrer(): string | null {
 }
 
 /**
- * 1) `?utm_source=` in the URL wins (manual campaigns / overrides).
- * 2) Else, first visit in this tab: infer from `document.referrer` (e.g. LinkedIn → linkedin).
- * 3) Else keep existing session value so refresh / in-app navigation does not drop attribution.
+ * 1) `utm_*` in URL wins and is persisted.
+ * 2) Else keep existing session values.
+ * 3) Else infer only `utm_source` from referrer (if allowed).
  */
 export function syncUtmFromCurrentUrl(): void {
   if (typeof window === "undefined") return;
 
-  const fromUrl = getUtmFromLocation();
-  if (fromUrl != null) {
+  const fromUrl = getUtmParamsFromLocation();
+  if (Object.keys(fromUrl).length > 0) {
     sessionStorage.removeItem(IGNORE_REFERRER_UNTIL_UTM_KEY);
-    sessionStorage.setItem(
-      STORAGE_KEY,
-      canonicalizeUtmSource(fromUrl).slice(0, 120),
-    );
+    for (const key of UTM_FIELDS) {
+      const raw = fromUrl[key];
+      if (!raw) continue;
+      const value = key === "utm_source" ? canonicalizeUtmSource(raw).slice(0, 120) : raw.slice(0, 180);
+      sessionStorage.setItem(STORAGE_KEY_BY_FIELD[key], value);
+    }
     return;
   }
 
-  const existing = sessionStorage.getItem(STORAGE_KEY);
-  if (existing != null && existing.trim().length > 0) {
-    return;
-  }
+  const hasExisting = UTM_FIELDS.some((key) => {
+    const v = sessionStorage.getItem(STORAGE_KEY_BY_FIELD[key]);
+    return v != null && v.trim().length > 0;
+  });
+  if (hasExisting) return;
 
-  if (sessionStorage.getItem(IGNORE_REFERRER_UNTIL_UTM_KEY) === "1") {
-    return;
-  }
+  if (sessionStorage.getItem(IGNORE_REFERRER_UNTIL_UTM_KEY) === "1") return;
 
   const inferred = inferSourceFromReferrer();
   if (inferred != null) {
-    sessionStorage.setItem(STORAGE_KEY, canonicalizeUtmSource(inferred));
+    sessionStorage.setItem(STORAGE_KEY_BY_FIELD.utm_source, canonicalizeUtmSource(inferred));
   }
 }
 
-/**
- * Value for the lead form: URL utm, auto referrer, or "direct".
- */
+/** Value for `utm_source`: URL utm, auto referrer, or "direct". */
 export function getUtmSourceForSubmit(): string {
   if (typeof window === "undefined") return "direct";
   syncUtmFromCurrentUrl();
-  const stored = sessionStorage.getItem(STORAGE_KEY);
+  const stored = sessionStorage.getItem(STORAGE_KEY_BY_FIELD.utm_source);
   if (stored != null && stored.trim().length > 0) {
     return canonicalizeUtmSource(stored);
   }
   return "direct";
+}
+
+/** All UTM fields for submit. Missing non-source fields are empty strings. */
+export function getUtmFieldsForSubmit(): UtmPayload {
+  if (typeof window === "undefined") {
+    return {
+      utm_source: "direct",
+      utm_medium: "",
+      utm_campaign: "",
+      utm_adset: "",
+      utm_content: "",
+      utm_term: "",
+      utm_placement: "",
+    };
+  }
+  syncUtmFromCurrentUrl();
+  const read = (key: UtmField) => {
+    const v = sessionStorage.getItem(STORAGE_KEY_BY_FIELD[key]);
+    return v != null && v.trim().length > 0 ? v.trim() : "";
+  };
+  return {
+    utm_source: getUtmSourceForSubmit(),
+    utm_medium: read("utm_medium"),
+    utm_campaign: read("utm_campaign"),
+    utm_adset: read("utm_adset"),
+    utm_content: read("utm_content"),
+    utm_term: read("utm_term"),
+    utm_placement: read("utm_placement"),
+  };
 }
 
 /**
@@ -129,7 +178,9 @@ export function getUtmSourceForSubmit(): string {
 export function clearStoredUtmSource(): void {
   if (typeof window === "undefined") return;
   try {
-    sessionStorage.removeItem(STORAGE_KEY);
+    for (const key of UTM_FIELDS) {
+      sessionStorage.removeItem(STORAGE_KEY_BY_FIELD[key]);
+    }
     sessionStorage.setItem(IGNORE_REFERRER_UNTIL_UTM_KEY, "1");
   } catch {
     /* ignore */
