@@ -1,5 +1,5 @@
 import { useState, ChangeEvent, FormEvent } from "react";
-import { getUtmSourceForSubmit } from "../lib/utm";
+import { clearStoredUtmSource, getUtmSourceForSubmit } from "../lib/utm";
 import { LeadFormValues, initialLeadFormValues } from "../models/lead";
 
 export type Toast = {
@@ -57,6 +57,7 @@ export function useLeadForm(options?: UseLeadFormOptions) {
         return;
       }
 
+      clearStoredUtmSource();
       setSubmitted(true);
       options?.onSuccess?.({
         id: Date.now(),

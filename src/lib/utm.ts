@@ -113,3 +113,13 @@ export function getUtmSourceForSubmit(): string {
   }
   return "direct";
 }
+
+/** Call after a successful lead submit so the next visit / submission does not reuse attribution. */
+export function clearStoredUtmSource(): void {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.removeItem(STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
