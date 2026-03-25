@@ -3,13 +3,22 @@ import { syncUtmFromCurrentUrl } from "./lib/utm";
 import { useLeadForm, type Toast } from "./controllers/useLeadForm";
 import { LandingPage } from "./pages/LandingPage";
 import { ThankYouPage } from "./pages/ThankYouPage";
+import { PrivacyPage } from "./pages/PrivacyPage";
 import { ToastContainer } from "./components/ui/Toast";
+
+type AppRoute = "landing" | "thankyou" | "privacy";
+
+function routeFromHash(): AppRoute {
+  if (typeof window === "undefined") return "landing";
+  const h = window.location.hash;
+  if (h === "#/thankyou") return "thankyou";
+  if (h === "#/privacy") return "privacy";
+  return "landing";
+}
 
 function App() {
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const [submitted, setSubmitted] = useState(
-    typeof window !== "undefined" && window.location.hash === "#/thankyou",
-  );
+  const [route, setRoute] = useState<AppRoute>(routeFromHash);
 
   const pushToast = (toast: Toast) => {
     // Always show only the latest toast
@@ -44,26 +53,17 @@ function App() {
   const heroForm = useLeadForm({
     onSuccess: (toast) => {
       pushToast(toast);
-      setSubmitted(true);
       window.location.hash = "#/thankyou";
     },
     onError: pushToast,
   });
   const handleReset = () => {
     heroForm.reset();
-    setSubmitted(false);
     window.location.hash = "#/";
   };
 
-  // Keep UI in sync if user lands directly on /#/thankyou or /#/
   useEffect(() => {
-    const onHashChange = () => {
-      if (window.location.hash === "#/thankyou") {
-        setSubmitted(true);
-      } else if (window.location.hash === "#/" || window.location.hash === "" || window.location.hash === "#home") {
-        setSubmitted(false);
-      }
-    };
+    const onHashChange = () => setRoute(routeFromHash());
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
@@ -71,8 +71,10 @@ function App() {
   return (
     <>
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
-      {submitted ? (
+      {route === "thankyou" ? (
         <ThankYouPage onBack={handleReset} />
+      ) : route === "privacy" ? (
+        <PrivacyPage />
       ) : (
         <LandingPage
           heroForm={heroForm.form}
