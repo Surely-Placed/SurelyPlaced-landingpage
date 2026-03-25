@@ -20,6 +20,13 @@ function getUtmFromLocation(): string | null {
   return null;
 }
 
+/** Sheet + analytics label: always `instagram`, never `ig`. */
+function canonicalizeUtmSource(raw: string): string {
+  const t = raw.trim();
+  if (t.toLowerCase() === "ig") return "instagram";
+  return t;
+}
+
 /**
  * Map document.referrer host to a short utm_source when the user did not use tagged links.
  * Referrer can be empty (privacy, HTTPS policies, in-app browsers) — then we fall back to "direct".
@@ -39,6 +46,9 @@ function inferSourceFromReferrer(): string | null {
       "l.facebook.com": "facebook",
       "fb.com": "facebook",
       "instagram.com": "instagram",
+      "m.instagram.com": "instagram",
+      "l.instagram.com": "instagram",
+      "help.instagram.com": "instagram",
       "twitter.com": "twitter",
       "x.com": "twitter",
       "t.co": "twitter",
@@ -47,12 +57,14 @@ function inferSourceFromReferrer(): string | null {
       "bing.com": "bing",
       "tiktok.com": "tiktok",
       "whatsapp.com": "whatsapp",
+      "ig.me": "instagram",
     };
 
     if (exact[host]) return exact[host];
 
     if (host.endsWith(".linkedin.com")) return "linkedin";
     if (host.endsWith(".facebook.com")) return "facebook";
+    if (host === "instagram.com" || host.endsWith(".instagram.com")) return "instagram";
     if (host.endsWith(".google.com") || host === "google.com") return "google";
 
     return null;
@@ -71,7 +83,10 @@ export function syncUtmFromCurrentUrl(): void {
 
   const fromUrl = getUtmFromLocation();
   if (fromUrl != null) {
-    sessionStorage.setItem(STORAGE_KEY, fromUrl.slice(0, 120));
+    sessionStorage.setItem(
+      STORAGE_KEY,
+      canonicalizeUtmSource(fromUrl).slice(0, 120),
+    );
     return;
   }
 
@@ -82,7 +97,7 @@ export function syncUtmFromCurrentUrl(): void {
 
   const inferred = inferSourceFromReferrer();
   if (inferred != null) {
-    sessionStorage.setItem(STORAGE_KEY, inferred);
+    sessionStorage.setItem(STORAGE_KEY, canonicalizeUtmSource(inferred));
   }
 }
 
@@ -94,7 +109,7 @@ export function getUtmSourceForSubmit(): string {
   syncUtmFromCurrentUrl();
   const stored = sessionStorage.getItem(STORAGE_KEY);
   if (stored != null && stored.trim().length > 0) {
-    return stored.trim();
+    return canonicalizeUtmSource(stored);
   }
   return "direct";
 }

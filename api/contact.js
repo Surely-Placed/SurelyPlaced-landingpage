@@ -96,6 +96,7 @@ function normalizeUtmSource(raw) {
   if (!t) return "direct";
   const lower = t.toLowerCase();
   if (lower === "direct") return "direct";
+  if (lower === "ig") return "instagram";
   if (!/^[\w\-./+\s@%]+$/i.test(t)) return "direct";
   return t;
 }
