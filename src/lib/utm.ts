@@ -1,8 +1,7 @@
 const STORAGE_KEY = "sp_utm_source";
 
 /**
- * Query string from the main URL or from the hash (e.g. `/#/?utm_source=linkedin` has no `location.search`).
- * Local / prod: `http://localhost:5174/?utm_source=linkedin` or `.../?utm_source=linkedin#/home`
+ * Query string from the main URL or from the hash (e.g. `/#/?utm_source=linkedin`).
  */
 function getUtmFromLocation(): string | null {
   if (typeof window === "undefined") return null;
@@ -22,19 +21,73 @@ function getUtmFromLocation(): string | null {
 }
 
 /**
- * Reads `utm_source` from the current URL and caches it for the tab session.
- * Works on localhost: open `http://localhost:5174/?utm_source=linkedin` (or hash form below), then submit the form.
+ * Map document.referrer host to a short utm_source when the user did not use tagged links.
+ * Referrer can be empty (privacy, HTTPS policies, in-app browsers) — then we fall back to "direct".
  */
-export function syncUtmFromCurrentUrl(): void {
-  if (typeof window === "undefined") return;
-  const raw = getUtmFromLocation();
-  if (raw != null) {
-    sessionStorage.setItem(STORAGE_KEY, raw.slice(0, 120));
+function inferSourceFromReferrer(): string | null {
+  if (typeof document === "undefined") return null;
+  const ref = document.referrer;
+  if (!ref) return null;
+  try {
+    const host = new URL(ref).hostname.toLowerCase().replace(/^www\./, "");
+
+    const exact: Record<string, string> = {
+      "linkedin.com": "linkedin",
+      "lnkd.in": "linkedin",
+      "facebook.com": "facebook",
+      "m.facebook.com": "facebook",
+      "l.facebook.com": "facebook",
+      "fb.com": "facebook",
+      "instagram.com": "instagram",
+      "twitter.com": "twitter",
+      "x.com": "twitter",
+      "t.co": "twitter",
+      "reddit.com": "reddit",
+      "youtube.com": "youtube",
+      "bing.com": "bing",
+      "tiktok.com": "tiktok",
+      "whatsapp.com": "whatsapp",
+    };
+
+    if (exact[host]) return exact[host];
+
+    if (host.endsWith(".linkedin.com")) return "linkedin";
+    if (host.endsWith(".facebook.com")) return "facebook";
+    if (host.endsWith(".google.com") || host === "google.com") return "google";
+
+    return null;
+  } catch {
+    return null;
   }
 }
 
 /**
- * Value to send with the lead form: last-touch from URL in this session, otherwise `"direct"`.
+ * 1) `?utm_source=` in the URL wins (manual campaigns / overrides).
+ * 2) Else, first visit in this tab: infer from `document.referrer` (e.g. LinkedIn → linkedin).
+ * 3) Else keep existing session value so refresh / in-app navigation does not drop attribution.
+ */
+export function syncUtmFromCurrentUrl(): void {
+  if (typeof window === "undefined") return;
+
+  const fromUrl = getUtmFromLocation();
+  if (fromUrl != null) {
+    sessionStorage.setItem(STORAGE_KEY, fromUrl.slice(0, 120));
+    return;
+  }
+
+  const existing = sessionStorage.getItem(STORAGE_KEY);
+  if (existing != null && existing.trim().length > 0) {
+    return;
+  }
+
+  const inferred = inferSourceFromReferrer();
+  if (inferred != null) {
+    sessionStorage.setItem(STORAGE_KEY, inferred);
+  }
+}
+
+/**
+ * Value for the lead form: URL utm, auto referrer, or "direct".
  */
 export function getUtmSourceForSubmit(): string {
   if (typeof window === "undefined") return "direct";
