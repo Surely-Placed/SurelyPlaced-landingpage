@@ -108,12 +108,12 @@ export function LeadSection(props: Props) {
             </div>
             <div>
               <label className="text-xs font-medium text-slate-100">
-                Current Designation*
+                Current role*
               </label>
               <input
                 type="text"
-                name="role"
-                value={form.role}
+                name="currentRole"
+                value={form.currentRole}
                 onChange={onChange}
                 className="mt-1 w-full rounded-lg border border-slate-600/60 bg-slate-900/40 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30"
                 // placeholder="3rd year B.Tech, recent graduate, etc."
@@ -122,11 +122,11 @@ export function LeadSection(props: Props) {
             </div>
             <div>
               <label className="text-xs font-medium text-slate-100">
-                What are your target roles and timelines?*
+                What kind of roles are you targeting?*
               </label>
               <textarea
-                name="hiringNeed"
-                value={form.hiringNeed}
+                name="targetedRole"
+                value={form.targetedRole}
                 onChange={onChange}
                 className="mt-1 w-full rounded-lg border border-slate-600/60 bg-slate-900/40 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30"
                 rows={3}

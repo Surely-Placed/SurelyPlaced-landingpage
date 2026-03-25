@@ -34,7 +34,7 @@ export function Header() {
     },
     {
       label: "Contact Us",
-      href: "#lead",
+      href: "#home",
     },
   ];
 

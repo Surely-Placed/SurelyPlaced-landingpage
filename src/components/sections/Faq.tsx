@@ -40,7 +40,7 @@ export function Faq() {
             </h2>
           </div>
           <p className="max-w-md text-sm text-slate-600">
-            Still curious? Share your context in the form below and we&apos;ll
+            Still curious? Share your context in the form at the top of the page and we&apos;ll
             respond with specifics, not templates.
           </p>
         </Reveal>

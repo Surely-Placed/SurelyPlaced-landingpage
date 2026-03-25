@@ -1,4 +1,5 @@
 import { useState, ChangeEvent, FormEvent } from "react";
+import { getUtmSourceForSubmit } from "../lib/utm";
 import { LeadFormValues, initialLeadFormValues } from "../models/lead";
 
 export type Toast = {
@@ -26,20 +27,9 @@ export function useLeadForm(options?: UseLeadFormOptions) {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!form.name || !form.email || !form.hiringNeed) return;
+    if (!form.name || !form.email || !form.targetedRole) return;
     setSubmitting(true);
     try {
-      const subject = "SurelyPlaced landing lead – FAANG/MAANG student";
-      const messageLines = [
-        `Target roles/timeline: ${form.hiringNeed}`,
-        "",
-        form.company ? `College / University: ${form.company}` : "",
-        form.role ? `Current Designation: ${form.role}` : "",
-        form.phone ? `Phone: ${form.phone}` : "",
-      ]
-        .filter(Boolean)
-        .join("\n");
-
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: {
@@ -49,16 +39,15 @@ export function useLeadForm(options?: UseLeadFormOptions) {
           name: form.name,
           email: form.email,
           phone: form.phone,
-          subject,
-          message: messageLines,
-          // Honeypot field – always empty for real users
-          company: "",
+          company: form.company,
+          current_role: form.currentRole,
+          targeted_role: form.targetedRole,
+          utm_source: getUtmSourceForSubmit(),
         }),
       });
 
       if (!res.ok) {
-        const errorText = await res.text();
-        console.error("Contact form submission failed", errorText);
+        await res.text();
         options?.onError?.({
           id: Date.now(),
           type: "error",
@@ -74,8 +63,7 @@ export function useLeadForm(options?: UseLeadFormOptions) {
         type: "success",
         message: "Thanks! Your details have been submitted successfully.",
       });
-    } catch (err) {
-      console.error("Contact form submission error", err);
+    } catch {
       options?.onError?.({
         id: Date.now(),
         type: "error",

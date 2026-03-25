@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { syncUtmFromCurrentUrl } from "./lib/utm";
 import { useLeadForm, type Toast } from "./controllers/useLeadForm";
 import { LandingPage } from "./pages/LandingPage";
 import { ThankYouPage } from "./pages/ThankYouPage";
@@ -19,6 +20,17 @@ function App() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
+  useEffect(() => {
+    syncUtmFromCurrentUrl();
+    const onUrlChange = () => syncUtmFromCurrentUrl();
+    window.addEventListener("hashchange", onUrlChange);
+    window.addEventListener("popstate", onUrlChange);
+    return () => {
+      window.removeEventListener("hashchange", onUrlChange);
+      window.removeEventListener("popstate", onUrlChange);
+    };
+  }, []);
+
   // Auto-dismiss the latest toast after 5 seconds
   useEffect(() => {
     if (toasts.length === 0) return;
@@ -37,18 +49,8 @@ function App() {
     },
     onError: pushToast,
   });
-  const leadForm = useLeadForm({
-    onSuccess: (toast) => {
-      pushToast(toast);
-      setSubmitted(true);
-      window.location.hash = "#/thankyou";
-    },
-    onError: pushToast,
-  });
-
   const handleReset = () => {
     heroForm.reset();
-    leadForm.reset();
     setSubmitted(false);
     window.location.hash = "#/";
   };
@@ -77,10 +79,6 @@ function App() {
           heroSubmitting={heroForm.submitting}
           heroOnChange={heroForm.handleChange}
           heroOnSubmit={heroForm.handleSubmit}
-          leadForm={leadForm.form}
-          leadSubmitting={leadForm.submitting}
-          leadOnChange={leadForm.handleChange}
-          leadOnSubmit={leadForm.handleSubmit}
         />
       )}
     </>

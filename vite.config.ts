@@ -1,13 +1,25 @@
 import { defineConfig, loadEnv } from "vite";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+import dotenv from "dotenv";
 import react from "@vitejs/plugin-react-swc";
 import contactHandler from "./api/contact";
 
+/** Project root (directory containing this config), not `process.cwd()` — fixes missing env when the shell cwd differs. */
+const projectRoot = path.dirname(fileURLToPath(import.meta.url));
+
+// Load `.env` as soon as this file runs so `/api/contact` always sees GOOGLE_* / FORM_* in dev.
+dotenv.config({ path: path.join(projectRoot, ".env") });
+dotenv.config({ path: path.join(projectRoot, ".env.local"), override: true });
+
 export default defineConfig(({ mode }) => {
-  // Load all env vars (including non-VITE_) so the local dev middleware
-  // can read your CONTACT_EMAIL_* values.
-  const env = loadEnv(mode, process.cwd(), "");
-  Object.assign(process.env, env);
+  // Vite client exposure uses VITE_; server middleware also needs webhook vars.
+  Object.assign(
+    process.env,
+    loadEnv(mode, projectRoot, "VITE_"),
+    loadEnv(mode, projectRoot, "GOOGLE_"),
+    loadEnv(mode, projectRoot, "FORM_"),
+  );
 
   return {
     plugins: [
@@ -60,7 +72,7 @@ export default defineConfig(({ mode }) => {
     },
     resolve: {
       alias: {
-        "@": path.resolve(__dirname, "src"),
+        "@": path.resolve(projectRoot, "src"),
       },
     },
   };

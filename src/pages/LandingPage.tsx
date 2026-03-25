@@ -6,7 +6,6 @@ import { Benefits } from "../components/sections/Benefits";
 import { Programs } from "../components/sections/Programs";
 import { Testimonials } from "../components/sections/Testimonials";
 import { Faq } from "../components/sections/Faq";
-import { LeadSection } from "../components/sections/LeadSection";
 
 type Props = {
   heroForm: import("../models/lead").LeadFormValues;
@@ -15,12 +14,6 @@ type Props = {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => void;
   heroOnSubmit: (e: React.FormEvent) => void;
-  leadForm: import("../models/lead").LeadFormValues;
-  leadSubmitting: boolean;
-  leadOnChange: (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-  ) => void;
-  leadOnSubmit: (e: React.FormEvent) => void;
 };
 
 export function LandingPage({
@@ -28,10 +21,6 @@ export function LandingPage({
   heroSubmitting,
   heroOnChange,
   heroOnSubmit,
-  leadForm,
-  leadSubmitting,
-  leadOnChange,
-  leadOnSubmit,
 }: Props) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-surface via-white to-surface">
@@ -48,12 +37,6 @@ export function LandingPage({
         <Programs />
         <Testimonials />
         <Faq />
-        <LeadSection
-          form={leadForm}
-          submitting={leadSubmitting}
-          onChange={leadOnChange}
-          onSubmit={leadOnSubmit}
-        />
       </main>
       <Footer />
     </div>

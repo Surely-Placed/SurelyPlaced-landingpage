@@ -1,4 +1,29 @@
-const nodemailer = require("nodemailer");
+// Forwards validated leads to a Google Apps Script Web App (doPost) that appends
+// rows to your sheet. No GCP credentials or googleapis on this server.
+
+const path = require("node:path");
+const fs = require("node:fs");
+
+// This file is imported from vite.config.ts before that file runs `dotenv.config()`,
+// so load repo `.env` here using `__dirname` (always `…/api`, never a Vite temp path).
+(function loadRepoDotenv() {
+  const hasUrl =
+    (process.env.GOOGLE_APPS_SCRIPT_URL || "").trim() ||
+    (process.env.FORM_WEBHOOK_URL || "").trim();
+  if (hasUrl) return;
+  const root = path.join(__dirname, "..");
+  const tryLoad = (name, override) => {
+    const p = path.join(root, name);
+    if (!fs.existsSync(p)) return;
+    try {
+      require("dotenv").config({ path: p, override: Boolean(override) });
+    } catch {
+      /* ignore */
+    }
+  };
+  tryLoad(".env", false);
+  tryLoad(".env.local", true);
+})();
 
 // Request body shape
 /**
@@ -6,9 +31,10 @@ const nodemailer = require("nodemailer");
  * @property {string} [name]
  * @property {string} [email]
  * @property {string} [phone]
- * @property {string} [subject]
- * @property {string} [message]
- * @property {string} [company] Honeypot field – bots fill this
+ * @property {string} [company] College / university (sheet: university)
+ * @property {string} [current_role]
+ * @property {string} [targeted_role] What roles they are targeting
+ * @property {string} [utm_source] Marketing source (e.g. linkedin); default direct
  */
 
 // Simple in-memory rate limit (best‑effort; resets on cold start)
@@ -35,6 +61,112 @@ function rateLimit(ip) {
 function getEnv(name) {
   const v = process.env[name];
   return (v && v.trim()) || "";
+}
+
+/**
+ * Web App URL must be the deployment URL ending in /exec (not /dev, /2, or editor links).
+ * @param {string} raw
+ * @returns {{ url: string } | { error: string }}
+ */
+function normalizeWebAppUrl(raw) {
+  const trimmed = raw.replace(/\s+/g, "").trim();
+  let parsed;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    return { error: "GOOGLE_APPS_SCRIPT_URL is not a valid URL." };
+  }
+  let path = parsed.pathname.replace(/\/+$/, "");
+  if (path.endsWith("/dev")) {
+    path = `${path.slice(0, -4)}/exec`;
+  }
+  if (!path.endsWith("/exec")) {
+    return {
+      error:
+        'GOOGLE_APPS_SCRIPT_URL must end with /exec. In Apps Script: Deploy → Manage deployments → copy the Web app URL from that deployment (it ends with /exec). Do not use a URL ending in /dev, /2, or the script editor link.',
+    };
+  }
+  parsed.pathname = path;
+  return { url: parsed.href };
+}
+
+/** Safe label for sheet; default direct when missing or invalid. */
+function normalizeUtmSource(raw) {
+  const t = String(raw ?? "").trim().slice(0, 120);
+  if (!t) return "direct";
+  const lower = t.toLowerCase();
+  if (lower === "direct") return "direct";
+  if (!/^[\w\-./+\s@%]+$/i.test(t)) return "direct";
+  return t;
+}
+
+const MAX_SCRIPT_REDIRECTS = 8;
+
+/**
+ * Apps Script returns 302 from script.google.com → script.googleusercontent.com.
+ * The second URL only allows GET/HEAD (Allow: HEAD, GET). Re-POSTing causes HTTP 405.
+ * Chrome follows 302 with GET; Google ties the original POST body to the redirect URL.
+ * @see https://stackoverflow.com/questions/74878421/google-apps-script-return-405-for-post-request
+ */
+async function postToGoogleAppsScriptWebApp(startUrl, postHeaders, bodyStr) {
+  const ua = postHeaders["User-Agent"] || "SurelyPlaced-Contact/1.0";
+  const getHeaders = {
+    Accept: "application/json, text/plain, */*",
+    "User-Agent": ua,
+  };
+
+  let url = startUrl;
+  let res = await fetch(url, {
+    method: "POST",
+    headers: postHeaders,
+    body: bodyStr,
+    redirect: "manual",
+  });
+
+  for (let hop = 0; hop < MAX_SCRIPT_REDIRECTS; hop++) {
+    if (res.status < 300 || res.status >= 400) {
+      return res;
+    }
+    const loc = res.headers.get("location");
+    if (!loc) return res;
+    const nextUrl = new URL(loc, url).href;
+    await res.arrayBuffer().catch(() => {});
+    url = nextUrl;
+    res = await fetch(nextUrl, {
+      method: "GET",
+      redirect: "manual",
+      headers: getHeaders,
+    });
+  }
+  return new Response("Too many redirects from Apps Script", { status: 508 });
+}
+
+function looksLikeHtml(s) {
+  const t = String(s || "").trimStart().toLowerCase();
+  return t.startsWith("<!doctype") || t.startsWith("<html");
+}
+
+function detailForAppsScriptFailure(status, text) {
+  const raw = String(text || "");
+  const pageNotFound =
+    /page not found/i.test(raw) || /<title>[^<]*not found/i.test(raw);
+  if (looksLikeHtml(raw)) {
+    if (status === 401 || pageNotFound) {
+      return (
+        "HTTP " +
+        status +
+        " (often “Page not found”): GOOGLE_APPS_SCRIPT_URL is wrong or not a Web App deployment. " +
+        'In Apps Script: Deploy → Manage deployments → under “Web app” copy the URL that ends with /exec only. ' +
+        "URLs ending in /2 or /dev are not the Web App URL. Redeploy with Who has access: Anyone if needed."
+      );
+    }
+    return (
+      "Google returned an HTML page instead of running your script (HTTP " +
+      status +
+      "). In Apps Script: Deploy → Manage deployments → edit the Web app → set Who has access to Anyone, save, copy the new /exec URL into GOOGLE_APPS_SCRIPT_URL, then try again."
+    );
+  }
+  return raw.slice(0, 200);
 }
 
 /**
@@ -72,210 +204,124 @@ async function handler(req, res) {
     /** @type {Body} */
     const body = (req.body || {});
 
-    // Honeypot: if filled, pretend success without sending email
-    if (body.company && body.company.trim().length > 0) {
-      res.statusCode = 200;
-      res.setHeader("Content-Type", "application/json");
-      return res.end(JSON.stringify({ ok: true }));
-    }
-
     const name = (body.name || "").trim();
     const email = (body.email || "").trim();
     const phone = (body.phone || "").trim();
-    const subject = (body.subject || "").trim();
-    const message = (body.message || "").trim();
-
     if (name.length < 2) {
       return jsonError(res, 400, "Invalid name");
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return jsonError(res, 400, "Invalid email");
     }
-    if (subject.length < 2) {
-      return jsonError(res, 400, "Invalid subject");
+
+    const college = (body.company || "").trim();
+    const currentRole = (body.current_role || body.role || "").trim();
+    const targetedRole = (body.targeted_role || "").trim();
+
+    if (college.length < 2) {
+      return jsonError(res, 400, "Invalid college / university");
     }
-    if (message.length < 10) {
-      return jsonError(res, 400, "Invalid message");
+    if (phone.length < 6) {
+      return jsonError(res, 400, "Invalid phone");
+    }
+    if (currentRole.length < 2) {
+      return jsonError(res, 400, "Invalid current role");
+    }
+    if (targetedRole.length < 2) {
+      return jsonError(res, 400, "Invalid targeted roles");
     }
 
-    const to = getEnv("CONTACT_EMAIL_TO");
-    const user = getEnv("CONTACT_EMAIL_USER");
-    const pass = getEnv("CONTACT_EMAIL_PASS");
-    const fromName = process.env.CONTACT_EMAIL_FROM_NAME || "Surely Placed";
-
-    if (!to || !user || !pass) {
+    const rawScriptUrl =
+      getEnv("GOOGLE_APPS_SCRIPT_URL") || getEnv("FORM_WEBHOOK_URL");
+    if (!rawScriptUrl.trim()) {
       return jsonError(
         res,
         500,
-        "Email service is not configured. Please set CONTACT_EMAIL_TO/USER/PASS in your environment.",
+        "GOOGLE_APPS_SCRIPT_URL is not set. Deploy a Web App from Google Apps Script and paste its URL (ends with /exec). See scripts/google-apps-script-append.gs in this repo.",
       );
     }
+    const normalized = normalizeWebAppUrl(rawScriptUrl);
+    if ("error" in normalized) {
+      return jsonError(res, 400, normalized.error);
+    }
+    const scriptUrl = normalized.url;
 
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: { user, pass },
-    });
+    const utmSource = normalizeUtmSource(body.utm_source);
 
-    const safeSubject = `[SSG Website] ${subject}`.slice(0, 180);
-    const text = [
-      "New contact form submission",
-      "",
-      `Name: ${name}`,
-      `Email: ${email}`,
-      phone ? `Phone: ${phone}` : null,
-      "",
-      `Subject: ${subject}`,
-      "",
-      "Message:",
-      message,
-      "",
-      `Time: ${new Date().toISOString()}`,
-    ]
-      .filter(Boolean)
-      .join("\n");
+    const payload = {
+      submittedAt: new Date().toISOString(),
+      name,
+      email,
+      phone,
+      college,
+      current_role: currentRole,
+      targeted_role: targetedRole,
+      utm_source: utmSource,
+    };
+    const scriptSecret =
+      getEnv("GOOGLE_APPS_SCRIPT_SECRET") || getEnv("FORM_WEBHOOK_SECRET");
+    if (scriptSecret) {
+      payload.secret = scriptSecret;
+    }
 
-    const htmlMessage = escapeHtml(message)
-      .trim()
-      .replace(/\n/g, "<br />");
-
-    const html = `
-      <div style="background:#020617;padding:32px 16px;">
-        <div style="max-width:720px;margin:0 auto;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#0f172a;">
-          <!-- Card -->
-          <div style="border-radius:28px;overflow:hidden;background:radial-gradient(circle at top left,#0f766e 0,#0f172a 40%,#020617 100%);box-shadow:0 22px 45px rgba(15,23,42,0.55);">
-            <!-- Header strip -->
-            <div style="padding:20px 24px 18px;border-bottom:1px solid rgba(148,163,184,0.18);background:linear-gradient(120deg,rgba(16,185,129,0.18),rgba(56,189,248,0.12),rgba(15,23,42,0.9));display:flex;align-items:center;justify-content:space-between;">
-              <div>
-                <div style="font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#a5f3fc;font-weight:700;">Surely Placed</div>
-                <div style="margin-top:6px;font-size:21px;line-height:1.25;font-weight:650;color:#e5f1ff;">
-                  New candidate enquiry
-                </div>
-              </div>
-              <div style="display:flex;align-items:center;gap:6px;">
-                <span style="display:inline-flex;width:8px;height:8px;border-radius:999px;background:#22c55e;box-shadow:0 0 0 6px rgba(34,197,94,0.2);"></span>
-                <span style="font-size:11px;color:#bbf7d0;">Lead captured</span>
-              </div>
-            </div>
-
-            <!-- Body -->
-            <div style="padding:20px 24px 22px;background:linear-gradient(180deg,rgba(15,23,42,0.97),#020617 100%);">
-              <!-- Summary pill -->
-              <div style="margin-bottom:16px;display:inline-flex;align-items:center;gap:8px;padding:6px 11px;border-radius:999px;background:rgba(15,23,42,0.9);border:1px solid rgba(148,163,184,0.45);">
-                <div style="width:20px;height:20px;border-radius:999px;background:conic-gradient(from 180deg at 50% 50%,#22c55e,#0ea5e9,#6366f1,#22c55e);display:flex;align-items:center;justify-content:center;">
-                  <span style="width:12px;height:12px;border-radius:999px;background:#020617;border:1px solid rgba(148,163,184,0.65);"></span>
-                </div>
-                <div style="font-size:11px;color:#e5e7eb;">
-                  New student / candidate shared their goals via the SurelyPlaced landing page.
-                </div>
-              </div>
-
-              <!-- Grid -->
-              <table style="width:100%;border-collapse:separate;border-spacing:0 8px;margin-bottom:10px;">
-                <tr>
-                  <td style="width:36%;padding:10px 12px 8px;border-radius:14px 0 0 14px;background:rgba(15,23,42,0.9);border:1px solid rgba(148,163,184,0.4);border-right:none;font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.12em;">
-                    Name
-                  </td>
-                  <td style="padding:10px 14px 8px;border-radius:0 14px 14px 0;background:rgba(15,23,42,0.9);border:1px solid rgba(148,163,184,0.4);font-size:14px;color:#e5e7eb;font-weight:600;">
-                    ${escapeHtml(name)}
-                  </td>
-                </tr>
-                <tr>
-                  <td style="width:36%;padding:10px 12px 8px;border-radius:14px 0 0 14px;background:rgba(15,23,42,0.9);border:1px solid rgba(148,163,184,0.36);border-right:none;font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.12em;">
-                    Email
-                  </td>
-                  <td style="padding:10px 14px 8px;border-radius:0 14px 14px 0;background:rgba(15,23,42,0.9);border:1px solid rgba(148,163,184,0.36);font-size:13px;color:#bfdbfe;">
-                    <a href="mailto:${escapeHtml(
-                      email,
-                    )}" style="color:#60a5fa;text-decoration:none;">${escapeHtml(email)}</a>
-                  </td>
-                </tr>
-                ${
-                  phone
-                    ? `
-                <tr>
-                  <td style="width:36%;padding:10px 12px 8px;border-radius:14px 0 0 14px;background:rgba(15,23,42,0.9);border:1px solid rgba(148,163,184,0.32);border-right:none;font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.12em;">
-                    Phone
-                  </td>
-                  <td style="padding:10px 14px 8px;border-radius:0 14px 14px 0;background:rgba(15,23,42,0.9);border:1px solid rgba(148,163,184,0.32);font-size:13px;color:#e5e7eb;">
-                    ${escapeHtml(phone)}
-                  </td>
-                </tr>
-              `
-                    : ""
-                }
-                <tr>
-                  <td style="width:36%;padding:10px 12px 8px;border-radius:14px 0 0 14px;background:rgba(15,23,42,0.9);border:1px solid rgba(148,163,184,0.32);border-right:none;font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.12em;">
-                    Subject
-                  </td>
-                  <td style="padding:10px 14px 8px;border-radius:0 14px 14px 0;background:rgba(15,23,42,0.9);border:1px solid rgba(148,163,184,0.32);font-size:13px;color:#e5e7eb;">
-                    ${escapeHtml(subject)}
-                  </td>
-                </tr>
-              </table>
-
-              <!-- Message block -->
-                <div style="margin-top:18px;">
-                <div style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#9ca3af;font-weight:700;">
-                  Target roles & timeline
-                </div>
-                  <div style="margin-top:8px;border-radius:18px;background:radial-gradient(circle at top left,rgba(56,189,248,0.22),rgba(15,23,42,0.96));border:1px solid rgba(148,163,184,0.5);padding:14px 15px;box-shadow:0 14px 28px rgba(15,23,42,0.6);font-size:13px;color:#e5e7eb;line-height:1.6;white-space:normal;text-align:left;">
-                    ${htmlMessage}
-                  </div>
-              </div>
-
-              <!-- Footer meta -->
-              <div style="margin-top:18px;display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#9ca3af;">
-                <span>Received: ${new Date().toLocaleString()}</span>
-                <span style="opacity:0.8;">SurelyPlaced · Landing page form</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Tiny footer -->
-          <div style="margin-top:10px;text-align:center;font-size:10px;color:#6b7280;">
-            You&apos;re receiving this email because a visitor submitted the consultation form on the SurelyPlaced site.
-          </div>
-        </div>
-      </div>
-    `;
+    const headers = {
+      "Content-Type": "application/json; charset=utf-8",
+      Accept: "application/json, text/plain, */*",
+      "User-Agent": "SurelyPlaced-Contact/1.0",
+    };
+    const bodyStr = JSON.stringify(payload);
 
     try {
-      await transporter.sendMail({
-        to,
-        from: `${fromName} <${user}>`,
-        replyTo: email,
-        subject: safeSubject,
-        text,
-        html,
-      });
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error("Email send failed:", err);
+      const upstream = await postToGoogleAppsScriptWebApp(
+        scriptUrl,
+        headers,
+        bodyStr,
+      );
+      const text = await upstream.text();
+      if (!upstream.ok) {
+        return jsonError(
+          res,
+          502,
+          "Failed to save to sheet",
+          detailForAppsScriptFailure(upstream.status, text),
+        );
+      }
+      if (looksLikeHtml(text)) {
+        return jsonError(
+          res,
+          502,
+          "Failed to save to sheet",
+          detailForAppsScriptFailure(upstream.status, text),
+        );
+      }
+      try {
+        const parsed = JSON.parse(text);
+        if (parsed && parsed.ok === false) {
+          return jsonError(
+            res,
+            502,
+            "Failed to save to sheet",
+            String(parsed.error || "Sheet script error").slice(0, 200),
+          );
+        }
+      } catch {
+        /* non-JSON success body is OK for some deployments */
+      }
+    } catch (e) {
       return jsonError(
         res,
-        500,
-        "Email send failed",
-        err instanceof Error ? err.message : String(err),
+        502,
+        "Failed to save to sheet",
+        e instanceof Error ? e.message : String(e),
       );
     }
 
     res.statusCode = 200;
     res.setHeader("Content-Type", "application/json");
     return res.end(JSON.stringify({ ok: true }));
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error("Unhandled error in contact handler:", err);
-    return jsonError(res, 500, "Failed to send message");
+  } catch {
+    return jsonError(res, 500, "Failed to save submission");
   }
-}
-
-function escapeHtml(s) {
-  return String(s)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
 }
 
 function jsonError(res, status, error, detail) {
@@ -298,4 +344,3 @@ function jsonError(res, status, error, detail) {
 }
 
 module.exports = handler;
-

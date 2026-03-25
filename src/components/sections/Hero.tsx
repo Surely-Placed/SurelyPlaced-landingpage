@@ -91,7 +91,7 @@ export function Hero(props: Props) {
             business day with the best path forward.
           </p>
 
-          <form onSubmit={onSubmit} className="mt-5 space-y-4">
+          <form onSubmit={onSubmit} className="relative mt-5 space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="text-xs font-medium text-slate-700">
@@ -153,12 +153,12 @@ export function Hero(props: Props) {
               </div>
               <div>
                 <label className="text-xs font-medium text-slate-700">
-                  Current Designation*
+                  Current role*
                 </label>
                 <input
                   type="text"
-                  name="role"
-                  value={form.role}
+                  name="currentRole"
+                  value={form.currentRole}
                   onChange={onChange}
                   className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                   // placeholder="3rd year B.Tech, recent graduate, etc."
@@ -171,8 +171,8 @@ export function Hero(props: Props) {
                 What kind of roles are you targeting?*
               </label>
               <textarea
-                name="hiringNeed"
-                value={form.hiringNeed}
+                name="targetedRole"
+                value={form.targetedRole}
                 onChange={onChange}
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                 rows={3}

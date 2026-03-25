@@ -3,8 +3,8 @@ export type LeadFormValues = {
   email: string;
   phone: string;
   company: string;
-  role: string;
-  hiringNeed: string;
+  currentRole: string;
+  targetedRole: string;
 };
 
 export const initialLeadFormValues: LeadFormValues = {
@@ -12,7 +12,7 @@ export const initialLeadFormValues: LeadFormValues = {
   email: "",
   phone: "",
   company: "",
-  role: "",
-  hiringNeed: "",
+  currentRole: "",
+  targetedRole: "",
 };
 
