@@ -9,7 +9,7 @@ export function ToastContainer({ toasts, onDismiss }: Props) {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-4 z-50 flex justify-center px-4 sm:top-6 sm:px-0">
+    <div className="pointer-events-none fixed inset-x-0 top-24 z-[70] flex justify-center px-4 sm:px-0">
       <div className="flex w-full max-w-md flex-col gap-3">
         {toasts.map((toast) => (
           <div

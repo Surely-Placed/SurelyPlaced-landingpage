@@ -27,7 +27,65 @@ export function useLeadForm(options?: UseLeadFormOptions) {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!form.name || !form.email || !form.targetedRole) return;
+    const payload = {
+      name: form.name.trim(),
+      email: form.email.trim(),
+      phone: form.phone.trim(),
+      company: form.company.trim(),
+      current_role: form.currentRole.trim(),
+      targeted_role: form.targetedRole.trim(),
+      ...getUtmFieldsForSubmit(),
+    };
+
+    if (payload.name.length < 2) {
+      options?.onError?.({
+        id: Date.now(),
+        type: "error",
+        message: "Please enter a valid name.",
+      });
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) {
+      options?.onError?.({
+        id: Date.now(),
+        type: "error",
+        message: "Please enter a valid email address.",
+      });
+      return;
+    }
+    if (payload.phone.length < 6) {
+      options?.onError?.({
+        id: Date.now(),
+        type: "error",
+        message: "Please enter a valid phone number.",
+      });
+      return;
+    }
+    if (payload.company.length < 2) {
+      options?.onError?.({
+        id: Date.now(),
+        type: "error",
+        message: "Please enter your college / university.",
+      });
+      return;
+    }
+    if (payload.current_role.length < 2) {
+      options?.onError?.({
+        id: Date.now(),
+        type: "error",
+        message: "Please enter your current role.",
+      });
+      return;
+    }
+    if (payload.targeted_role.length < 2) {
+      options?.onError?.({
+        id: Date.now(),
+        type: "error",
+        message: "Please describe the roles you're targeting.",
+      });
+      return;
+    }
+
     setSubmitting(true);
     try {
       const res = await fetch("/api/contact", {
@@ -35,24 +93,18 @@ export function useLeadForm(options?: UseLeadFormOptions) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          name: form.name,
-          email: form.email,
-          phone: form.phone,
-          company: form.company,
-          current_role: form.currentRole,
-          targeted_role: form.targetedRole,
-          ...getUtmFieldsForSubmit(),
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
-        await res.text();
+        const body = await res.json().catch(() => null);
+        const errorMessage =
+          (body && (body.error || body.detail)) ||
+          "Something went wrong while submitting your details. Please try again.";
         options?.onError?.({
           id: Date.now(),
           type: "error",
-          message:
-            "Something went wrong while submitting your details. Please try again.",
+          message: String(errorMessage),
         });
         return;
       }
