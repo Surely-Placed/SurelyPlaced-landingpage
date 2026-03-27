@@ -1,4 +1,4 @@
-﻿const IGNORE_REFERRER_UNTIL_UTM_KEY = "sp_utm_ignore_referrer";
+const IGNORE_REFERRER_UNTIL_UTM_KEY = "sp_utm_ignore_referrer";
 const UTM_FIELDS = [
   "utm_source",
   "utm_medium",
@@ -41,6 +41,23 @@ function getUtmParamsFromLocation(): Partial<UtmPayload> {
     read(new URLSearchParams(hash.slice(q + 1)));
   }
   return out;
+}
+
+/** Google Ads / Performance Max click IDs — organic Google search does not send these. */
+const GOOGLE_ADS_CLICK_IDS = ["gclid", "gbraid", "wbraid"] as const;
+
+function hasGoogleAdsClickIdInLocation(): boolean {
+  if (typeof window === "undefined") return false;
+  const { search, hash } = window.location;
+  const check = (params: URLSearchParams) =>
+    GOOGLE_ADS_CLICK_IDS.some((id) => {
+      const v = params.get(id);
+      return v != null && v.trim().length > 0;
+    });
+  if (search.length > 1 && check(new URLSearchParams(search))) return true;
+  const qi = hash.indexOf("?");
+  if (qi >= 0 && check(new URLSearchParams(hash.slice(qi + 1)))) return true;
+  return false;
 }
 
 /** Sheet + analytics label: always `instagram`, never `ig`. */
@@ -88,12 +105,21 @@ function inferSourceFromReferrer(): string | null {
     if (host.endsWith(".linkedin.com")) return "linkedin";
     if (host.endsWith(".facebook.com")) return "facebook";
     if (host === "instagram.com" || host.endsWith(".instagram.com")) return "instagram";
-    if (host.endsWith(".google.com") || host === "google.com") return "google";
+    // Google Search / google.com in the browser bar: treat as direct, not "google".
+    // Google Ads is tagged via URL (utm_* / gclid), not organic referrer.
+    if (isGoogleHostname(host)) return null;
 
     return null;
   } catch {
     return null;
   }
+}
+
+function isGoogleHostname(host: string): boolean {
+  const h = host.toLowerCase();
+  if (h === "google.com" || h.endsWith(".google.com")) return true;
+  // Regional TLDs: google.co.uk, google.de, etc.
+  return /^google\.[a-z.]{2,}$/i.test(h);
 }
 
 /**
@@ -105,13 +131,19 @@ export function syncUtmFromCurrentUrl(): void {
   if (typeof window === "undefined") return;
 
   const fromUrl = getUtmParamsFromLocation();
-  if (Object.keys(fromUrl).length > 0) {
+  const adsClick = hasGoogleAdsClickIdInLocation();
+
+  if (Object.keys(fromUrl).length > 0 || adsClick) {
     sessionStorage.removeItem(IGNORE_REFERRER_UNTIL_UTM_KEY);
     for (const key of UTM_FIELDS) {
       const raw = fromUrl[key];
       if (!raw) continue;
       const value = key === "utm_source" ? canonicalizeUtmSource(raw).slice(0, 120) : raw.slice(0, 180);
       sessionStorage.setItem(STORAGE_KEY_BY_FIELD[key], value);
+    }
+    const src = sessionStorage.getItem(STORAGE_KEY_BY_FIELD.utm_source);
+    if ((!src || !src.trim()) && adsClick) {
+      sessionStorage.setItem(STORAGE_KEY_BY_FIELD.utm_source, "google");
     }
     return;
   }
@@ -120,7 +152,24 @@ export function syncUtmFromCurrentUrl(): void {
     const v = sessionStorage.getItem(STORAGE_KEY_BY_FIELD[key]);
     return v != null && v.trim().length > 0;
   });
-  if (hasExisting) return;
+
+  // If this session already has a source but the current visit is an
+  // untagged organic Google search (no utm_*, no ad click IDs, referrer = google),
+  // we *downgrade* the source to "direct" instead of keeping a sticky "google".
+  if (hasExisting) {
+    try {
+      const currentSourceRaw = sessionStorage.getItem(STORAGE_KEY_BY_FIELD.utm_source) || "";
+      const currentSource = currentSourceRaw.trim().toLowerCase();
+      const ref = typeof document !== "undefined" ? document.referrer : "";
+      const refHost = ref ? new URL(ref).hostname.toLowerCase().replace(/^www\./, "") : "";
+      if (!adsClick && currentSource === "google" && refHost && isGoogleHostname(refHost)) {
+        sessionStorage.setItem(STORAGE_KEY_BY_FIELD.utm_source, "direct");
+      }
+    } catch {
+      // best-effort only
+    }
+    return;
+  }
 
   if (sessionStorage.getItem(IGNORE_REFERRER_UNTIL_UTM_KEY) === "1") return;
 
