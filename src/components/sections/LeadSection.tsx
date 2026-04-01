@@ -88,7 +88,9 @@ export function LeadSection(props: Props) {
                 value={form.phone}
                 onChange={onChange}
                 className="mt-1 w-full rounded-lg border border-slate-600/60 bg-slate-900/40 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30"
-                placeholder="+1 555 123 4567"
+                inputMode="numeric"
+                autoComplete="tel"
+                placeholder="10-digit phone number"
                 required
               />
             </div>

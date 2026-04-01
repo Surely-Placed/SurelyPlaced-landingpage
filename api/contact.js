@@ -1,4 +1,4 @@
-﻿// Forwards validated leads to a Google Apps Script Web App (doPost) that appends
+// Forwards validated leads to a Google Apps Script Web App (doPost) that appends
 // rows to your sheet. No GCP credentials or googleapis on this server.
 
 const path = require("node:path");
@@ -218,9 +218,15 @@ async function handler(req, res) {
     /** @type {Body} */
     const body = (req.body || {});
 
+    const normalizePhone10Digits = (raw) => {
+      let digits = String(raw || "").replace(/\D/g, "");
+      if (digits.length === 12 && digits.startsWith("91")) digits = digits.slice(2);
+      return digits.slice(0, 10);
+    };
+
     const name = (body.name || "").trim();
     const email = (body.email || "").trim();
-    const phone = (body.phone || "").trim();
+    const phoneDigits = normalizePhone10Digits(body.phone);
     if (name.length < 2) {
       return jsonError(res, 400, "Invalid name");
     }
@@ -235,8 +241,8 @@ async function handler(req, res) {
     if (college.length < 2) {
       return jsonError(res, 400, "Invalid college / university");
     }
-    if (phone.length < 6) {
-      return jsonError(res, 400, "Invalid phone");
+    if (phoneDigits.length !== 10) {
+      return jsonError(res, 400, "Invalid phone (10 digits required)");
     }
     if (currentRole.length < 2) {
       return jsonError(res, 400, "Invalid current role");
@@ -272,7 +278,7 @@ async function handler(req, res) {
       submittedAt: new Date().toISOString(),
       name,
       email,
-      phone,
+      phone: `+91 ${phoneDigits}`,
       college,
       current_role: currentRole,
       targeted_role: targetedRole,

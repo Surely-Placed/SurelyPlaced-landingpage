@@ -18,19 +18,32 @@ export function useLeadForm(options?: UseLeadFormOptions) {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
+  const normalizePhone10Digits = (raw: string) => {
+    let digits = String(raw || "").replace(/\D/g, "");
+    // Common paste: +91XXXXXXXXXX → store as 10 digits
+    if (digits.length === 12 && digits.startsWith("91")) digits = digits.slice(2);
+    return digits.slice(0, 10);
+  };
+
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
+    if (name === "phone") {
+      const digits = normalizePhone10Digits(value);
+      setForm((prev) => ({ ...prev, phone: digits }));
+      return;
+    }
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    const phoneDigits = normalizePhone10Digits(form.phone);
     const payload = {
       name: form.name.trim(),
       email: form.email.trim(),
-      phone: form.phone.trim(),
+      phone: phoneDigits,
       company: form.company.trim(),
       current_role: form.currentRole.trim(),
       targeted_role: form.targetedRole.trim(),
@@ -53,11 +66,11 @@ export function useLeadForm(options?: UseLeadFormOptions) {
       });
       return;
     }
-    if (payload.phone.length < 6) {
+    if (payload.phone.length !== 10) {
       options?.onError?.({
         id: Date.now(),
         type: "error",
-        message: "Please enter a valid phone number.",
+        message: "Please enter a valid 10-digit phone number.",
       });
       return;
     }

@@ -132,7 +132,9 @@ export function Hero(props: Props) {
                 value={form.phone}
                 onChange={onChange}
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                placeholder="+1 555 123 4567"
+                inputMode="numeric"
+                autoComplete="tel"
+                placeholder="10-digit phone number"
                 required
               />
             </div>
