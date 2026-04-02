@@ -18,31 +18,47 @@ export function useLeadForm(options?: UseLeadFormOptions) {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  const normalizePhone10Digits = (raw: string) => {
+  const normalizePhone10Digits = (raw: string, countryCode: string) => {
     let digits = String(raw || "").replace(/\D/g, "");
-    // Common paste: +91XXXXXXXXXX → store as 10 digits
-    if (digits.length === 12 && digits.startsWith("91")) digits = digits.slice(2);
+    const ccDigits = String(countryCode || "").replace(/\D/g, "");
+    // If user pastes full number with selected country code, keep local 10 digits.
+    if (
+      ccDigits &&
+      digits.length === ccDigits.length + 10 &&
+      digits.startsWith(ccDigits)
+    ) {
+      digits = digits.slice(ccDigits.length);
+    }
     return digits.slice(0, 10);
   };
 
-  const handleChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-  ) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     if (name === "phone") {
-      const digits = normalizePhone10Digits(value);
-      setForm((prev) => ({ ...prev, phone: digits }));
+      setForm((prev) => ({
+        ...prev,
+        phone: normalizePhone10Digits(value, prev.countryCode),
+      }));
       return;
     }
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleCountryCodeChange = (countryCode: string) => {
+    setForm((prev) => ({
+      ...prev,
+      countryCode,
+      phone: normalizePhone10Digits(prev.phone, countryCode),
+    }));
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    const phoneDigits = normalizePhone10Digits(form.phone);
+    const phoneDigits = normalizePhone10Digits(form.phone, form.countryCode);
     const payload = {
       name: form.name.trim(),
       email: form.email.trim(),
+      country_code: form.countryCode.trim(),
       phone: phoneDigits,
       company: form.company.trim(),
       current_role: form.currentRole.trim(),
@@ -146,7 +162,15 @@ export function useLeadForm(options?: UseLeadFormOptions) {
     setForm(initialLeadFormValues);
   };
 
-  return { form, submitting, submitted, handleChange, handleSubmit, reset };
+  return {
+    form,
+    submitting,
+    submitted,
+    handleChange,
+    handleCountryCodeChange,
+    handleSubmit,
+    reset,
+  };
 }
 
 

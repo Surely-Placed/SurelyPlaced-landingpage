@@ -1,11 +1,13 @@
 import type { LeadFormValues } from "../../models/lead";
 import { initialLeadFormValues } from "../../models/lead";
 import { Reveal } from "../Reveal";
+import { CountryCodePicker } from "../ui/country-code-picker";
 
 type Props = {
   form?: LeadFormValues;
   submitting?: boolean;
   onChange?: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  onCountryCodeChange?: (value: string) => void;
   onSubmit?: (e: React.FormEvent) => void;
 };
 
@@ -14,6 +16,7 @@ export function LeadSection(props: Props) {
     form = initialLeadFormValues,
     submitting = false,
     onChange = () => {},
+    onCountryCodeChange = () => {},
     onSubmit = () => {},
   } = props ?? {};
   return (
@@ -82,17 +85,24 @@ export function LeadSection(props: Props) {
               <label className="text-xs font-medium text-slate-100">
                 Phone number*
               </label>
-              <input
-                type="tel"
-                name="phone"
-                value={form.phone}
-                onChange={onChange}
-                className="mt-1 w-full rounded-lg border border-slate-600/60 bg-slate-900/40 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30"
-                inputMode="numeric"
-                autoComplete="tel"
-                placeholder="10-digit phone number"
-                required
-              />
+              <div className="mt-1 flex gap-2">
+                <CountryCodePicker
+                  value={form.countryCode}
+                  onChange={onCountryCodeChange}
+                  className="h-10 w-32 justify-between rounded-lg border-slate-600/60 bg-slate-900/40 px-2 text-white hover:bg-slate-800"
+                />
+                <input
+                  type="tel"
+                  name="phone"
+                  value={form.phone}
+                  onChange={onChange}
+                  className="w-full rounded-lg border border-slate-600/60 bg-slate-900/40 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30"
+                  inputMode="numeric"
+                  autoComplete="tel-national"
+                  placeholder="10-digit phone number"
+                  required
+                />
+              </div>
             </div>
             <div>
               <label className="text-xs font-medium text-slate-100">

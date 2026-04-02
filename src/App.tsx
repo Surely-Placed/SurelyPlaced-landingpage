@@ -80,6 +80,7 @@ function App() {
           heroForm={heroForm.form}
           heroSubmitting={heroForm.submitting}
           heroOnChange={heroForm.handleChange}
+          heroOnCountryCodeChange={heroForm.handleCountryCodeChange}
           heroOnSubmit={heroForm.handleSubmit}
         />
       )}

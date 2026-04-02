@@ -30,6 +30,7 @@ const fs = require("node:fs");
  * @typedef {Object} Body
  * @property {string} [name]
  * @property {string} [email]
+ * @property {string} [country_code]
  * @property {string} [phone]
  * @property {string} [company] College / university (sheet: university)
  * @property {string} [current_role]
@@ -218,15 +219,30 @@ async function handler(req, res) {
     /** @type {Body} */
     const body = (req.body || {});
 
-    const normalizePhone10Digits = (raw) => {
+    const normalizePhone10Digits = (raw, countryCode) => {
       let digits = String(raw || "").replace(/\D/g, "");
-      if (digits.length === 12 && digits.startsWith("91")) digits = digits.slice(2);
+      const ccDigits = String(countryCode || "").replace(/\D/g, "");
+      if (
+        ccDigits &&
+        digits.length === ccDigits.length + 10 &&
+        digits.startsWith(ccDigits)
+      ) {
+        digits = digits.slice(ccDigits.length);
+      }
       return digits.slice(0, 10);
+    };
+
+    const normalizeCountryCode = (raw) => {
+      const cc = String(raw || "").trim();
+      if (!cc) return "+91";
+      if (!/^\+\d{1,4}$/.test(cc)) return "+91";
+      return cc;
     };
 
     const name = (body.name || "").trim();
     const email = (body.email || "").trim();
-    const phoneDigits = normalizePhone10Digits(body.phone);
+    const countryCode = normalizeCountryCode(body.country_code);
+    const phoneDigits = normalizePhone10Digits(body.phone, countryCode);
     if (name.length < 2) {
       return jsonError(res, 400, "Invalid name");
     }
@@ -278,7 +294,7 @@ async function handler(req, res) {
       submittedAt: new Date().toISOString(),
       name,
       email,
-      phone: `+91 ${phoneDigits}`,
+      phone: `${countryCode} ${phoneDigits}`,
       college,
       current_role: currentRole,
       targeted_role: targetedRole,

@@ -13,6 +13,7 @@ type Props = {
   heroOnChange: (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => void;
+  heroOnCountryCodeChange: (value: string) => void;
   heroOnSubmit: (e: React.FormEvent) => void;
 };
 
@@ -20,6 +21,7 @@ export function LandingPage({
   heroForm,
   heroSubmitting,
   heroOnChange,
+  heroOnCountryCodeChange,
   heroOnSubmit,
 }: Props) {
   return (
@@ -30,6 +32,7 @@ export function LandingPage({
           form={heroForm}
           submitting={heroSubmitting}
           onChange={heroOnChange}
+          onCountryCodeChange={heroOnCountryCodeChange}
           onSubmit={heroOnSubmit}
         />
         <SocialProof />
