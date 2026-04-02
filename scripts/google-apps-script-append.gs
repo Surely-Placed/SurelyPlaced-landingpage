@@ -38,17 +38,26 @@ function doPost(e) {
       SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Sheet1") ||
       SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
     const tz = Session.getScriptTimeZone() || "Asia/Kolkata";
-    const submittedDate = data.submittedAt ? new Date(data.submittedAt) : new Date();
+    var submittedDate = data.submittedAt ? new Date(data.submittedAt) : new Date();
+    if (isNaN(submittedDate.getTime())) {
+      submittedDate = new Date();
+    }
     const submittedAtSimple =
       Utilities.formatDate(submittedDate, tz, "dd-MM-yyyy") +
       " " +
       Utilities.formatDate(submittedDate, tz, "hh:mm a");
 
+    // Force phone as plain text: values starting with "+" can be parsed as formulas/numbers in Sheets.
+    var phoneCell = String(data.phone || "");
+    if (phoneCell.charAt(0) === "+") {
+      phoneCell = "'" + phoneCell;
+    }
+
     sheet.appendRow([
       submittedAtSimple,
       data.name || "",
       data.email || "",
-      data.phone || "",
+      phoneCell,
       data.college || "",
       data.current_role || data.role || "",
       data.targeted_role || "",

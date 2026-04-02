@@ -31,6 +31,7 @@ const fs = require("node:fs");
  * @property {string} [name]
  * @property {string} [email]
  * @property {string} [country_code]
+ * @property {string} [country_code] E.164-style dial prefix, e.g. +1, +91
  * @property {string} [phone]
  * @property {string} [company] College / university (sheet: university)
  * @property {string} [current_role]
@@ -234,8 +235,9 @@ async function handler(req, res) {
 
     const normalizeCountryCode = (raw) => {
       const cc = String(raw || "").trim();
-      if (!cc) return "+91";
-      if (!/^\+\d{1,4}$/.test(cc)) return "+91";
+      if (!cc) return "+1";
+      // Allow any reasonable E.164 country calling prefix (libphonenumber uses up to 4 digits, rarely 5)
+      if (!/^\+\d{1,6}$/.test(cc)) return "+1";
       return cc;
     };
 
