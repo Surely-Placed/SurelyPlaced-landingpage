@@ -41,6 +41,13 @@ export function useLeadForm(options?: UseLeadFormOptions) {
       }));
       return;
     }
+    if (name === "whatsapp") {
+      setForm((prev) => ({
+        ...prev,
+        whatsapp: normalizePhone10Digits(value, prev.whatsappCountryCode),
+      }));
+      return;
+    }
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -52,15 +59,28 @@ export function useLeadForm(options?: UseLeadFormOptions) {
     }));
   };
 
+  const handleWhatsappCountryCodeChange = (whatsappCountryCode: string) => {
+    setForm((prev) => ({
+      ...prev,
+      whatsappCountryCode,
+      whatsapp: normalizePhone10Digits(prev.whatsapp, whatsappCountryCode),
+    }));
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     const phoneDigits = normalizePhone10Digits(form.phone, form.countryCode);
+    const whatsappDigits = normalizePhone10Digits(
+      form.whatsapp,
+      form.whatsappCountryCode,
+    );
     const payload = {
       name: form.name.trim(),
       email: form.email.trim(),
       country_code: form.countryCode.trim(),
       phone: phoneDigits,
-      whatsapp: form.whatsapp.trim(),
+      whatsapp_country_code: form.whatsappCountryCode.trim(),
+      whatsapp: whatsappDigits,
       linkedin: form.linkedin.trim(),
       company: form.company.trim(),
       current_role: form.currentRole.trim(),
@@ -89,6 +109,14 @@ export function useLeadForm(options?: UseLeadFormOptions) {
         id: Date.now(),
         type: "error",
         message: "Please enter a valid 10-digit phone number.",
+      });
+      return;
+    }
+    if (payload.whatsapp && payload.whatsapp.length !== 10) {
+      options?.onError?.({
+        id: Date.now(),
+        type: "error",
+        message: "Please enter a valid 10-digit WhatsApp number.",
       });
       return;
     }
@@ -170,6 +198,7 @@ export function useLeadForm(options?: UseLeadFormOptions) {
     submitted,
     handleChange,
     handleCountryCodeChange,
+    handleWhatsappCountryCodeChange,
     handleSubmit,
     reset,
   };

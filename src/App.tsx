@@ -81,6 +81,7 @@ function App() {
           heroSubmitting={heroForm.submitting}
           heroOnChange={heroForm.handleChange}
           heroOnCountryCodeChange={heroForm.handleCountryCodeChange}
+          heroOnWhatsappCountryCodeChange={heroForm.handleWhatsappCountryCodeChange}
           heroOnSubmit={heroForm.handleSubmit}
         />
       )}

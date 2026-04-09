@@ -14,6 +14,7 @@ type Props = {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => void;
   heroOnCountryCodeChange: (value: string) => void;
+  heroOnWhatsappCountryCodeChange: (value: string) => void;
   heroOnSubmit: (e: React.FormEvent) => void;
 };
 
@@ -22,6 +23,7 @@ export function LandingPage({
   heroSubmitting,
   heroOnChange,
   heroOnCountryCodeChange,
+  heroOnWhatsappCountryCodeChange,
   heroOnSubmit,
 }: Props) {
   return (
@@ -33,6 +35,7 @@ export function LandingPage({
           submitting={heroSubmitting}
           onChange={heroOnChange}
           onCountryCodeChange={heroOnCountryCodeChange}
+          onWhatsappCountryCodeChange={heroOnWhatsappCountryCodeChange}
           onSubmit={heroOnSubmit}
         />
         <SocialProof />

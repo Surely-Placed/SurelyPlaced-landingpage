@@ -7,6 +7,7 @@ type Props = {
   submitting?: boolean;
   onChange?: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onCountryCodeChange?: (value: string) => void;
+  onWhatsappCountryCodeChange?: (value: string) => void;
   onSubmit?: (e: React.FormEvent) => void;
 };
 
@@ -16,6 +17,7 @@ export function Hero(props: Props) {
     submitting = false,
     onChange = () => {},
     onCountryCodeChange = () => {},
+    onWhatsappCountryCodeChange = () => {},
     onSubmit = () => {},
   } = props ?? {};
   return (
@@ -153,15 +155,22 @@ export function Hero(props: Props) {
                 <label className="text-xs font-medium text-slate-700">
                   WhatsApp number (optional)
                 </label>
-                <input
-                  type="tel"
-                  name="whatsapp"
-                  value={form.whatsapp}
-                  onChange={onChange}
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  placeholder="10-digit WhatsApp number"
-                  inputMode="numeric"
-                />
+                <div className="mt-1 flex gap-2">
+                  <CountryCodePicker
+                    value={form.whatsappCountryCode}
+                    onChange={onWhatsappCountryCodeChange}
+                    className="h-10 w-32 justify-between rounded-lg border-slate-200 bg-white px-2"
+                  />
+                  <input
+                    type="tel"
+                    name="whatsapp"
+                    value={form.whatsapp}
+                    onChange={onChange}
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    placeholder="10-digit WhatsApp number"
+                    inputMode="numeric"
+                  />
+                </div>
               </div>
               <div>
                 <label className="text-xs font-medium text-slate-700">

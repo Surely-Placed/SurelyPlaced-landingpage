@@ -32,6 +32,7 @@ const fs = require("node:fs");
  * @property {string} [email]
  * @property {string} [country_code] E.164-style dial prefix, e.g. +1, +91
  * @property {string} [phone]
+ * @property {string} [whatsapp_country_code]
  * @property {string} [whatsapp]
  * @property {string} [linkedin]
  * @property {string} [company] College / university (sheet: university)
@@ -124,13 +125,6 @@ function normalizeLinkedin(raw) {
   if (/^https?:\/\//i.test(t)) return t;
   if (t.startsWith("@")) return t.slice(1);
   return t;
-}
-
-function normalizeWhatsapp(raw) {
-  const t = String(raw ?? "").trim();
-  if (!t) return "";
-  const digits = t.replace(/\D/g, "").slice(0, 15);
-  return digits;
 }
 
 const MAX_SCRIPT_REDIRECTS = 8;
@@ -270,7 +264,8 @@ async function handler(req, res) {
     }
 
     const college = (body.company || "").trim();
-    const whatsapp = normalizeWhatsapp(body.whatsapp);
+    const whatsappCountryCode = normalizeCountryCode(body.whatsapp_country_code);
+    const whatsappDigits = normalizePhone10Digits(body.whatsapp, whatsappCountryCode);
     const linkedin = normalizeLinkedin(body.linkedin);
     const currentRole = (body.current_role || body.role || "").trim();
     const targetedRole = (body.targeted_role || "").trim();
@@ -280,6 +275,9 @@ async function handler(req, res) {
     }
     if (phoneDigits.length !== 10) {
       return jsonError(res, 400, "Invalid phone (10 digits required)");
+    }
+    if (String(body.whatsapp || "").trim() && whatsappDigits.length !== 10) {
+      return jsonError(res, 400, "Invalid WhatsApp number (10 digits required)");
     }
     if (currentRole.length < 2) {
       return jsonError(res, 400, "Invalid current role");
@@ -316,7 +314,7 @@ async function handler(req, res) {
       name,
       email,
       phone: `${countryCode} ${phoneDigits}`,
-      whatsapp,
+      whatsapp: whatsappDigits ? `${whatsappCountryCode} ${whatsappDigits}` : "",
       linkedin,
       college,
       current_role: currentRole,

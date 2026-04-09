@@ -7,7 +7,7 @@
  * Copy the Web app URL (ends with /exec) into GOOGLE_APPS_SCRIPT_URL.
  * External clients: POST once to that URL, then follow the 302 with GET (POST again â†’ 405).
  *
- * Sheet row 1 headers (Sheet1): Submitted at | Name | email | phone | university | current_role | targeted_role | utm_source | utm_medium | utm_campaign | utm_adset | utm_content | utm_term | utm_placement | whatsapp | linkedin
+ * Sheet row 1 headers (Sheet1): Submitted at | Name | email | phone | university | current_role | targeted_role | whatsapp | linkedin | utm_source | utm_medium | utm_campaign | utm_adset | utm_content | utm_term | utm_placement
  *
  * WEBHOOK_SECRET below must match GOOGLE_APPS_SCRIPT_SECRET on your server.
  * If this file is in a public repo, rotate this secret and update both places.
@@ -52,6 +52,10 @@ function doPost(e) {
     if (phoneCell.charAt(0) === "+") {
       phoneCell = "'" + phoneCell;
     }
+    var whatsappCell = String(data.whatsapp || "");
+    if (whatsappCell.charAt(0) === "+") {
+      whatsappCell = "'" + whatsappCell;
+    }
 
     sheet.appendRow([
       submittedAtSimple,
@@ -61,6 +65,8 @@ function doPost(e) {
       data.college || "",
       data.current_role || data.role || "",
       data.targeted_role || "",
+      whatsappCell,
+      data.linkedin || "",
       data.utm_source || "direct",
       data.utm_medium || "",
       data.utm_campaign || "",
@@ -68,8 +74,6 @@ function doPost(e) {
       data.utm_content || "",
       data.utm_term || "",
       data.utm_placement || "",
-      data.whatsapp || "",
-      data.linkedin || "",
     ]);
 
     out.setContent(JSON.stringify({ ok: true }));

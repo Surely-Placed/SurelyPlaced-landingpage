@@ -8,6 +8,7 @@ type Props = {
   submitting?: boolean;
   onChange?: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onCountryCodeChange?: (value: string) => void;
+  onWhatsappCountryCodeChange?: (value: string) => void;
   onSubmit?: (e: React.FormEvent) => void;
 };
 
@@ -17,6 +18,7 @@ export function LeadSection(props: Props) {
     submitting = false,
     onChange = () => {},
     onCountryCodeChange = () => {},
+    onWhatsappCountryCodeChange = () => {},
     onSubmit = () => {},
   } = props ?? {};
   return (
@@ -109,15 +111,22 @@ export function LeadSection(props: Props) {
                 <label className="text-xs font-medium text-slate-100">
                   WhatsApp number (optional)
                 </label>
-                <input
-                  type="tel"
-                  name="whatsapp"
-                  value={form.whatsapp}
-                  onChange={onChange}
-                  className="mt-1 w-full rounded-lg border border-slate-600/60 bg-slate-900/40 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30"
-                  placeholder="10-digit WhatsApp number"
-                  inputMode="numeric"
-                />
+                <div className="mt-1 flex gap-2">
+                  <CountryCodePicker
+                    value={form.whatsappCountryCode}
+                    onChange={onWhatsappCountryCodeChange}
+                    className="h-10 w-32 justify-between rounded-lg border-slate-600/60 bg-slate-900/40 px-2 text-white hover:bg-slate-800"
+                  />
+                  <input
+                    type="tel"
+                    name="whatsapp"
+                    value={form.whatsapp}
+                    onChange={onChange}
+                    className="w-full rounded-lg border border-slate-600/60 bg-slate-900/40 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30"
+                    placeholder="10-digit WhatsApp number"
+                    inputMode="numeric"
+                  />
+                </div>
               </div>
               <div>
                 <label className="text-xs font-medium text-slate-100">
