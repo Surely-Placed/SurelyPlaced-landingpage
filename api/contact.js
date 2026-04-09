@@ -30,9 +30,10 @@ const fs = require("node:fs");
  * @typedef {Object} Body
  * @property {string} [name]
  * @property {string} [email]
- * @property {string} [country_code]
  * @property {string} [country_code] E.164-style dial prefix, e.g. +1, +91
  * @property {string} [phone]
+ * @property {string} [whatsapp]
+ * @property {string} [linkedin]
  * @property {string} [company] College / university (sheet: university)
  * @property {string} [current_role]
  * @property {string} [targeted_role] What roles they are targeting
@@ -114,6 +115,22 @@ function normalizeUtmField(raw) {
   if (!t) return "";
   if (!/^[\w\-./+\s@%]+$/i.test(t)) return "";
   return t;
+}
+
+function normalizeLinkedin(raw) {
+  const t = String(raw ?? "").trim().slice(0, 220);
+  if (!t) return "";
+  // Accept full URL, @username, or plain username/profile slug.
+  if (/^https?:\/\//i.test(t)) return t;
+  if (t.startsWith("@")) return t.slice(1);
+  return t;
+}
+
+function normalizeWhatsapp(raw) {
+  const t = String(raw ?? "").trim();
+  if (!t) return "";
+  const digits = t.replace(/\D/g, "").slice(0, 15);
+  return digits;
 }
 
 const MAX_SCRIPT_REDIRECTS = 8;
@@ -253,6 +270,8 @@ async function handler(req, res) {
     }
 
     const college = (body.company || "").trim();
+    const whatsapp = normalizeWhatsapp(body.whatsapp);
+    const linkedin = normalizeLinkedin(body.linkedin);
     const currentRole = (body.current_role || body.role || "").trim();
     const targetedRole = (body.targeted_role || "").trim();
 
@@ -297,6 +316,8 @@ async function handler(req, res) {
       name,
       email,
       phone: `${countryCode} ${phoneDigits}`,
+      whatsapp,
+      linkedin,
       college,
       current_role: currentRole,
       targeted_role: targetedRole,

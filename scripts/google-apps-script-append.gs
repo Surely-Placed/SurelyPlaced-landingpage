@@ -7,7 +7,7 @@
  * Copy the Web app URL (ends with /exec) into GOOGLE_APPS_SCRIPT_URL.
  * External clients: POST once to that URL, then follow the 302 with GET (POST again â†’ 405).
  *
- * Sheet row 1 headers (Sheet1): Submitted at | Name | email | phone | university | current_role | targeted_role | utm_source | utm_medium | utm_campaign | utm_adset | utm_content | utm_term | utm_placement
+ * Sheet row 1 headers (Sheet1): Submitted at | Name | email | phone | university | current_role | targeted_role | utm_source | utm_medium | utm_campaign | utm_adset | utm_content | utm_term | utm_placement | whatsapp | linkedin
  *
  * WEBHOOK_SECRET below must match GOOGLE_APPS_SCRIPT_SECRET on your server.
  * If this file is in a public repo, rotate this secret and update both places.
@@ -68,6 +68,8 @@ function doPost(e) {
       data.utm_content || "",
       data.utm_term || "",
       data.utm_placement || "",
+      data.whatsapp || "",
+      data.linkedin || "",
     ]);
 
     out.setContent(JSON.stringify({ ok: true }));

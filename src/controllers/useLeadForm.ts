@@ -60,6 +60,8 @@ export function useLeadForm(options?: UseLeadFormOptions) {
       email: form.email.trim(),
       country_code: form.countryCode.trim(),
       phone: phoneDigits,
+      whatsapp: form.whatsapp.trim(),
+      linkedin: form.linkedin.trim(),
       company: form.company.trim(),
       current_role: form.currentRole.trim(),
       targeted_role: form.targetedRole.trim(),

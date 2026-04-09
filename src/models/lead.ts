@@ -3,6 +3,8 @@ export type LeadFormValues = {
   email: string;
   countryCode: string;
   phone: string;
+  whatsapp: string;
+  linkedin: string;
   company: string;
   currentRole: string;
   targetedRole: string;
@@ -13,6 +15,8 @@ export const initialLeadFormValues: LeadFormValues = {
   email: "",
   countryCode: "+1",
   phone: "",
+  whatsapp: "",
+  linkedin: "",
   company: "",
   currentRole: "",
   targetedRole: "",

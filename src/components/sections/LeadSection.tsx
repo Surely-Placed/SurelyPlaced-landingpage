@@ -104,6 +104,35 @@ export function LeadSection(props: Props) {
                 />
               </div>
             </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="text-xs font-medium text-slate-100">
+                  WhatsApp number (optional)
+                </label>
+                <input
+                  type="tel"
+                  name="whatsapp"
+                  value={form.whatsapp}
+                  onChange={onChange}
+                  className="mt-1 w-full rounded-lg border border-slate-600/60 bg-slate-900/40 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30"
+                  placeholder="10-digit WhatsApp number"
+                  inputMode="numeric"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-100">
+                  LinkedIn URL or username (optional)
+                </label>
+                <input
+                  type="text"
+                  name="linkedin"
+                  value={form.linkedin}
+                  onChange={onChange}
+                  className="mt-1 w-full rounded-lg border border-slate-600/60 bg-slate-900/40 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30"
+                  placeholder="linkedin.com/in/username or username"
+                />
+              </div>
+            </div>
             <div>
               <label className="text-xs font-medium text-slate-100">
                 College / University*
