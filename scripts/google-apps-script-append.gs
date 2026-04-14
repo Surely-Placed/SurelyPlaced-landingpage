@@ -17,11 +17,18 @@
 const WEBHOOK_SECRET =
   "d6875585ec89516540525080b6e857946eefff5af58a8b2977bbcca9581859d9";
 
+function normalizeEmailForMatch(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
 function doPost(e) {
   const out = ContentService.createTextOutput();
   out.setMimeType(ContentService.MimeType.JSON);
+  const lock = LockService.getDocumentLock();
 
   try {
+    lock.waitLock(30000);
+
     if (!e.postData || !e.postData.contents) {
       out.setContent(JSON.stringify({ ok: false, error: "No body" }));
       return out;
@@ -37,6 +44,27 @@ function doPost(e) {
     const sheet =
       SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Sheet1") ||
       SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+
+    const normalizedEmail = normalizeEmailForMatch(data.email);
+    if (normalizedEmail) {
+      const lastRow = sheet.getLastRow();
+      if (lastRow >= 2) {
+        const existingEmails = sheet.getRange(2, 3, lastRow - 1, 1).getValues();
+        for (var i = 0; i < existingEmails.length; i++) {
+          if (normalizeEmailForMatch(existingEmails[i][0]) === normalizedEmail) {
+            out.setContent(
+              JSON.stringify({
+                ok: false,
+                error: "DUPLICATE_EMAIL",
+                message: "You already filled this form.",
+              }),
+            );
+            return out;
+          }
+        }
+      }
+    }
+
     const tz = Session.getScriptTimeZone() || "Asia/Kolkata";
     var submittedDate = data.submittedAt ? new Date(data.submittedAt) : new Date();
     if (isNaN(submittedDate.getTime())) {
@@ -86,6 +114,12 @@ function doPost(e) {
       }),
     );
     return out;
+  } finally {
+    try {
+      lock.releaseLock();
+    } catch {
+      // no-op
+    }
   }
 }
 

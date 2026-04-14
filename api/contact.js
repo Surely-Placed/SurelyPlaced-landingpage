@@ -196,6 +196,11 @@ function detailForAppsScriptFailure(status, text) {
   return raw.slice(0, 200);
 }
 
+function isDuplicateEmailError(parsed) {
+  const code = String(parsed?.error || parsed?.code || "").trim().toUpperCase();
+  return code === "DUPLICATE_EMAIL";
+}
+
 /**
  * Vercel Node.js API route handler (CommonJS)
  * @param {import('http').IncomingMessage & { body?: Body; method?: string; headers?: any; socket: any }} req
@@ -366,6 +371,9 @@ async function handler(req, res) {
       try {
         const parsed = JSON.parse(text);
         if (parsed && parsed.ok === false) {
+          if (isDuplicateEmailError(parsed)) {
+            return jsonError(res, 409, "You already filled this form.");
+          }
           return jsonError(
             res,
             502,
