@@ -3,16 +3,14 @@ import { syncUtmFromCurrentUrl } from "./lib/utm";
 import { useLeadForm, type Toast } from "./controllers/useLeadForm";
 import { LandingPage } from "./pages/LandingPage";
 import { ThankYouPage } from "./pages/ThankYouPage";
-import { PrivacyPage } from "./pages/PrivacyPage";
 import { ToastContainer } from "./components/ui/Toast";
 
-type AppRoute = "landing" | "thankyou" | "privacy";
+type AppRoute = "landing" | "thankyou";
 
 function routeFromHash(): AppRoute {
   if (typeof window === "undefined") return "landing";
   const h = window.location.hash;
   if (h === "#/thankyou") return "thankyou";
-  if (h === "#/privacy") return "privacy";
   return "landing";
 }
 
@@ -59,7 +57,12 @@ function App() {
   });
   const handleReset = () => {
     heroForm.reset();
-    window.location.hash = "#/";
+    if (typeof window !== "undefined") {
+      const cleanUrl = `${window.location.pathname}${window.location.search}`;
+      window.history.replaceState(null, "", cleanUrl);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      setRoute("landing");
+    }
   };
 
   useEffect(() => {
@@ -73,8 +76,6 @@ function App() {
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       {route === "thankyou" ? (
         <ThankYouPage onBack={handleReset} />
-      ) : route === "privacy" ? (
-        <PrivacyPage />
       ) : (
         <LandingPage
           heroForm={heroForm.form}

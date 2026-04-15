@@ -1,15 +1,15 @@
 import { SurelyPlacedLogo } from "@/components/Logo";
 
 const companyLinks = [
-  { label: "About Us", href: "#home" },
-  { label: "Privacy Policy", href: "#/privacy" },
-  { label: "Contact Us", href: "#home" },
+  { label: "About Us", sectionId: "benefits" },
+  { label: "Privacy Policy", sectionId: "home" },
+  { label: "Contact Us", sectionId: "home" },
 ] as const;
 
 const serviceLinks = [
-  { label: "Resume Creation", href: "#program-resume" },
-  { label: "1:1 Technical Mentorship", href: "#program-mentorship" },
-  { label: "Job Application Support", href: "#program-applications" },
+  { label: "Resume Creation", sectionId: "programs" },
+  { label: "1:1 Technical Mentorship", sectionId: "programs" },
+  { label: "Job Application Support", sectionId: "programs" },
 ] as const;
 
 function MailIcon({ className }: { className?: string }) {
@@ -72,14 +72,26 @@ function MapPinIcon({ className }: { className?: string }) {
 }
 
 export function Footer() {
+  const scrollToSection = (sectionId: string) => {
+    const el = document.getElementById(sectionId);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+    const cleanUrl = `${window.location.pathname}${window.location.search}`;
+    window.history.replaceState(null, "", cleanUrl);
+  };
+
   return (
     <footer className="border-t border-slate-200/80 bg-surface">
       <div className="container-narrow py-12 sm:py-14 lg:py-16">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-12">
           <div className="sm:col-span-2 lg:col-span-1">
-            <a href="#home" className="inline-flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => scrollToSection("home")}
+              className="inline-flex items-center gap-2.5"
+            >
               <SurelyPlacedLogo className="h-9 w-auto sm:h-10" />
-            </a>
+            </button>
             <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
               Talent That Sticks
             </p>
@@ -95,12 +107,13 @@ export function Footer() {
             <ul className="mt-4 space-y-2.5">
               {companyLinks.map((item) => (
                 <li key={item.label}>
-                  <a
-                    href={item.href}
+                  <button
+                    type="button"
+                    onClick={() => scrollToSection(item.sectionId)}
                     className="text-sm text-slate-600 transition-colors hover:text-primary"
                   >
                     {item.label}
-                  </a>
+                  </button>
                 </li>
               ))}
             </ul>
@@ -111,12 +124,13 @@ export function Footer() {
             <ul className="mt-4 space-y-2.5">
               {serviceLinks.map((item) => (
                 <li key={item.label}>
-                  <a
-                    href={item.href}
+                  <button
+                    type="button"
+                    onClick={() => scrollToSection(item.sectionId)}
                     className="text-sm text-slate-600 transition-colors hover:text-primary"
                   >
                     {item.label}
-                  </a>
+                  </button>
                 </li>
               ))}
             </ul>

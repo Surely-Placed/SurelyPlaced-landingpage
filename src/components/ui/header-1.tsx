@@ -10,31 +10,38 @@ import { createPortal } from "react-dom";
 export function Header() {
   const [open, setOpen] = React.useState(false);
   const scrolled = useScroll(10);
+  const scrollToSection = React.useCallback((sectionId: string) => {
+    const el = document.getElementById(sectionId);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+    const cleanUrl = `${window.location.pathname}${window.location.search}`;
+    window.history.replaceState(null, "", cleanUrl);
+  }, []);
 
   const links = [
     {
       label: "Home",
-      href: "#home",
+      sectionId: "home",
     },
     {
       label: "Why SurelyPlaced",
-      href: "#benefits",
+      sectionId: "benefits",
     },
     {
       label: "Programs",
-      href: "#programs",
+      sectionId: "programs",
     },
     {
       label: "Testimonials",
-      href: "#testimonials",
+      sectionId: "testimonials",
     },
     {
       label: "FAQ",
-      href: "#faq",
+      sectionId: "faq",
     },
     {
       label: "Contact Us",
-      href: "#home",
+      sectionId: "home",
     },
   ];
 
@@ -60,18 +67,23 @@ export function Header() {
       )}
     >
       <nav className="mx-auto flex h-20 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
-        <a href="#home" className="flex items-center gap-2">
+        <button
+          type="button"
+          className="flex items-center gap-2"
+          onClick={() => scrollToSection("home")}
+        >
           <SurelyPlacedLogo className="h-16 w-auto sm:h-18" />
-        </a>
+        </button>
         <div className="hidden items-center gap-2 md:flex">
           {links.map((link) => (
-            <a
+            <button
+              type="button"
               key={link.label}
               className={buttonVariants({ variant: "ghost" })}
-              href={link.href}
+              onClick={() => scrollToSection(link.sectionId)}
             >
               {link.label}
-            </a>
+            </button>
           ))}
           {/* <Button variant="outline">Sign In</Button>
           <Button>Get Started</Button> */}
@@ -91,16 +103,20 @@ export function Header() {
       <MobileMenu open={open} className="flex flex-col justify-between gap-2">
         <div className="grid gap-y-2">
           {links.map((link) => (
-            <a
+            <button
+              type="button"
               key={link.label}
               className={buttonVariants({
                 variant: "ghost",
                 className: "justify-start",
               })}
-              href={link.href}
+              onClick={() => {
+                scrollToSection(link.sectionId);
+                setOpen(false);
+              }}
             >
               {link.label}
-            </a>
+            </button>
           ))}
         </div>
         {/* <div className="flex flex-col gap-2">

@@ -9,7 +9,7 @@ export function ThankYouPage({ onBack }: Props) {
     <div className="flex min-h-screen flex-col bg-white text-slate-900">
       <header className="border-b border-slate-200 bg-white">
         <div className="container-narrow flex items-center justify-between py-4">
-          <a href="#home" className="flex items-center gap-3">
+          <button type="button" onClick={onBack} className="flex items-center gap-3">
             <SurelyPlacedLogo className="h-10 w-auto sm:h-10" />
             {/* <div className="hidden sm:block">
               <p className="font-display text-base tracking-tight text-white">
@@ -19,7 +19,7 @@ export function ThankYouPage({ onBack }: Props) {
                 Talent That Sticks
               </p>
             </div> */}
-          </a>
+          </button>
         </div>
       </header>
       <main className="flex flex-1 items-center bg-white">

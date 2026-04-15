@@ -16,7 +16,7 @@ export function PrivacyPage() {
     <div className="flex min-h-screen flex-col bg-surface text-slate-900">
       <header className="border-b border-slate-200 bg-white">
         <div className="container-narrow flex items-center justify-between py-4">
-          <a href="#home" className="flex items-center gap-3">
+          <a href="/" className="flex items-center gap-3">
             <SurelyPlacedLogo className="h-10 w-auto sm:h-10" />
           </a>
         </div>
@@ -25,7 +25,7 @@ export function PrivacyPage() {
         <div className="container-narrow py-12 sm:py-16">
           <p className="mb-6">
             <a
-              href="#home"
+              href="/"
               className="text-sm font-semibold text-primary underline-offset-4 hover:underline"
             >
               Back to Home
@@ -247,7 +247,7 @@ export function PrivacyPage() {
 
           <p className="mt-12">
             <a
-              href="#home"
+              href="/"
               className="text-sm font-semibold text-primary underline-offset-4 hover:underline"
             >
               Back to Home
