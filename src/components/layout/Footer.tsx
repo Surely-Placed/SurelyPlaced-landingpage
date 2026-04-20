@@ -2,7 +2,7 @@ import { SurelyPlacedLogo } from "@/components/Logo";
 
 const companyLinks = [
   { label: "About Us", sectionId: "benefits" },
-  { label: "Privacy Policy", sectionId: "home" },
+  { label: "Privacy Policy", href: "/privacy" },
   { label: "Contact Us", sectionId: "home" },
 ] as const;
 
@@ -107,13 +107,22 @@ export function Footer() {
             <ul className="mt-4 space-y-2.5">
               {companyLinks.map((item) => (
                 <li key={item.label}>
-                  <button
-                    type="button"
-                    onClick={() => scrollToSection(item.sectionId)}
-                    className="text-sm text-slate-600 transition-colors hover:text-primary"
-                  >
-                    {item.label}
-                  </button>
+                  {"href" in item ? (
+                    <a
+                      href={item.href}
+                      className="text-sm text-slate-600 transition-colors hover:text-primary"
+                    >
+                      {item.label}
+                    </a>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => scrollToSection(item.sectionId)}
+                      className="text-sm text-slate-600 transition-colors hover:text-primary"
+                    >
+                      {item.label}
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>

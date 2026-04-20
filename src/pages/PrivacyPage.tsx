@@ -245,14 +245,6 @@ export function PrivacyPage() {
             </section>
           </div>
 
-          <p className="mt-12">
-            <a
-              href="/"
-              className="text-sm font-semibold text-primary underline-offset-4 hover:underline"
-            >
-              Back to Home
-            </a>
-          </p>
         </div>
       </main>
     </div>

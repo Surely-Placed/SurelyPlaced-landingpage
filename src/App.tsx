@@ -2,13 +2,15 @@ import { useEffect, useState } from "react";
 import { syncUtmFromCurrentUrl } from "./lib/utm";
 import { useLeadForm, type Toast } from "./controllers/useLeadForm";
 import { LandingPage } from "./pages/LandingPage";
+import { PrivacyPage } from "./pages/PrivacyPage";
 import { ThankYouPage } from "./pages/ThankYouPage";
 import { ToastContainer } from "./components/ui/Toast";
 
-type AppRoute = "landing" | "thankyou";
+type AppRoute = "landing" | "thankyou" | "privacy";
 
-function routeFromHash(): AppRoute {
+function routeFromLocation(): AppRoute {
   if (typeof window === "undefined") return "landing";
+  if (window.location.pathname === "/privacy") return "privacy";
   const h = window.location.hash;
   if (h === "#/thankyou") return "thankyou";
   return "landing";
@@ -16,7 +18,7 @@ function routeFromHash(): AppRoute {
 
 function App() {
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const [route, setRoute] = useState<AppRoute>(routeFromHash);
+  const [route, setRoute] = useState<AppRoute>(routeFromLocation);
 
   const pushToast = (toast: Toast) => {
     // Always show only the latest toast
@@ -66,15 +68,21 @@ function App() {
   };
 
   useEffect(() => {
-    const onHashChange = () => setRoute(routeFromHash());
-    window.addEventListener("hashchange", onHashChange);
-    return () => window.removeEventListener("hashchange", onHashChange);
+    const onLocationChange = () => setRoute(routeFromLocation());
+    window.addEventListener("popstate", onLocationChange);
+    window.addEventListener("hashchange", onLocationChange);
+    return () => {
+      window.removeEventListener("popstate", onLocationChange);
+      window.removeEventListener("hashchange", onLocationChange);
+    };
   }, []);
 
   return (
     <>
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
-      {route === "thankyou" ? (
+      {route === "privacy" ? (
+        <PrivacyPage />
+      ) : route === "thankyou" ? (
         <ThankYouPage onBack={handleReset} />
       ) : (
         <LandingPage
