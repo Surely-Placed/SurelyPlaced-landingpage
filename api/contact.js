@@ -213,20 +213,27 @@ function detailForAppsScriptFailure(status, text) {
   const raw = String(text || "");
   const pageNotFound =
     /page not found/i.test(raw) || /<title>[^<]*not found/i.test(raw);
+
+  // 401 from script.google.com usually means Web App blocks anonymous calls (server has no Google login).
+  if (looksLikeHtml(raw) && status === 401) {
+    return (
+      "HTTP 401: this Web App does not allow anonymous access. Open Apps Script for the failing sheet -> Deploy -> Manage deployments -> edit the Web app -> set Who has access to Anyone " +
+      "(not only 'Anyone with Google account'). Save, Deploy new version if prompted, then copy the Web app URL ending in /exec into Vercel for that destination."
+    );
+  }
+
   if (looksLikeHtml(raw)) {
-    if (status === 401 || pageNotFound) {
+    if (pageNotFound) {
       return (
         "HTTP " +
         status +
-        " (often â€œPage not foundâ€): GOOGLE_APPS_SCRIPT_URL is wrong or not a Web App deployment. " +
-        'In Apps Script: Deploy â†’ Manage deployments â†’ under â€œWeb appâ€ copy the URL that ends with /exec only. ' +
-        "URLs ending in /2 or /dev are not the Web App URL. Redeploy with Who has access: Anyone if needed."
+        ": wrong URL or not a Web app deployment. Use Manage deployments -> Web app -> URL ending in /exec only (not /dev or .../2)."
       );
     }
     return (
-      "Google returned an HTML page instead of running your script (HTTP " +
+      "Google returned HTML instead of JSON (HTTP " +
       status +
-      "). In Apps Script: Deploy â†’ Manage deployments â†’ edit the Web app â†’ set Who has access to Anyone, save, copy the new /exec URL into GOOGLE_APPS_SCRIPT_URL, then try again."
+      "). Fix Web app access (Who has access: Anyone) and confirm the /exec deployment URL."
     );
   }
   return raw.slice(0, 200);
