@@ -99,7 +99,27 @@ function normalizeWebAppUrl(raw) {
 }
 
 /**
- * Multiple sheets: comma-separate URLs in GOOGLE_APPS_SCRIPT_URL and/or set GOOGLE_APPS_SCRIPT_URL_2.
+ * Split env value into multiple Web App URLs (comma, newline, semicolon; strips BOM/quotes).
+ * @param {string} raw
+ * @returns {string[]}
+ */
+function splitUrlEnvList(raw) {
+  if (!raw) return [];
+  return raw
+    .split(/[,;\n\r\uFF0C]+/g)
+    .map((chunk) =>
+      chunk
+        .replace(/^\uFEFF/, "")
+        .trim()
+        .replace(/^["']+|["']+$/g, "")
+        .trim(),
+    )
+    .filter(Boolean);
+}
+
+/**
+ * Multiple sheets: separate URLs with comma, newline, or semicolon in GOOGLE_APPS_SCRIPT_URL,
+ * and/or set GOOGLE_APPS_SCRIPT_URL_2.
  * @returns {string[]}
  */
 function collectRawAppsScriptUrls() {
@@ -107,14 +127,12 @@ function collectRawAppsScriptUrls() {
   const secondary = getEnv("GOOGLE_APPS_SCRIPT_URL_2");
   /** @type {string[]} */
   const raw = [];
-  if (primary) {
-    for (const chunk of primary.split(",")) {
-      const t = chunk.trim();
-      if (t) raw.push(t);
-    }
+  for (const chunk of splitUrlEnvList(primary)) {
+    raw.push(chunk);
   }
-  const s2 = secondary.trim();
-  if (s2) raw.push(s2);
+  for (const chunk of splitUrlEnvList(secondary)) {
+    raw.push(chunk);
+  }
   return raw;
 }
 
@@ -371,21 +389,35 @@ async function handler(req, res) {
     const bodyStr = JSON.stringify(payload);
 
     try {
-      for (let u = 0; u < scriptUrls.length; u++) {
-        const scriptUrl = scriptUrls[u];
-        const upstream = await postToGoogleAppsScriptWebApp(
-          scriptUrl,
-          headers,
-          bodyStr,
-        );
-        const text = await upstream.text();
+      const total = scriptUrls.length;
+      const settled = await Promise.allSettled(
+        scriptUrls.map((scriptUrl) =>
+          postToGoogleAppsScriptWebApp(scriptUrl, headers, bodyStr).then(async (upstream) => ({
+            upstream,
+            text: await upstream.text(),
+          })),
+        ),
+      );
+
+      for (let u = 0; u < settled.length; u++) {
+        const entry = settled[u];
+        if (entry.status === "rejected") {
+          const msg = entry.reason instanceof Error ? entry.reason.message : String(entry.reason);
+          return jsonError(
+            res,
+            502,
+            "Failed to save to sheet",
+            total > 1 ? `${msg} (destination ${u + 1}/${total})` : msg,
+          );
+        }
+        const { upstream, text } = entry.value;
         if (!upstream.ok) {
           return jsonError(
             res,
             502,
             "Failed to save to sheet",
-            scriptUrls.length > 1
-              ? `${detailForAppsScriptFailure(upstream.status, text)} (destination ${u + 1}/${scriptUrls.length})`
+            total > 1
+              ? `${detailForAppsScriptFailure(upstream.status, text)} (destination ${u + 1}/${total})`
               : detailForAppsScriptFailure(upstream.status, text),
           );
         }
@@ -394,8 +426,8 @@ async function handler(req, res) {
             res,
             502,
             "Failed to save to sheet",
-            scriptUrls.length > 1
-              ? `${detailForAppsScriptFailure(upstream.status, text)} (destination ${u + 1}/${scriptUrls.length})`
+            total > 1
+              ? `${detailForAppsScriptFailure(upstream.status, text)} (destination ${u + 1}/${total})`
               : detailForAppsScriptFailure(upstream.status, text),
           );
         }
@@ -409,8 +441,8 @@ async function handler(req, res) {
               res,
               502,
               "Failed to save to sheet",
-              scriptUrls.length > 1
-                ? `${String(parsed.error || "Sheet script error").slice(0, 200)} (destination ${u + 1}/${scriptUrls.length})`
+              total > 1
+                ? `${String(parsed.error || "Sheet script error").slice(0, 200)} (destination ${u + 1}/${total})`
                 : String(parsed.error || "Sheet script error").slice(0, 200),
             );
           }
@@ -429,7 +461,12 @@ async function handler(req, res) {
 
     res.statusCode = 200;
     res.setHeader("Content-Type", "application/json");
-    return res.end(JSON.stringify({ ok: true }));
+    return res.end(
+      JSON.stringify({
+        ok: true,
+        destinations: scriptUrls.length,
+      }),
+    );
   } catch {
     return jsonError(res, 500, "Failed to save submission");
   }
