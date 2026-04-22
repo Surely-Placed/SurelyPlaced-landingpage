@@ -5,12 +5,10 @@ const path = require("node:path");
 const fs = require("node:fs");
 
 // This file is imported from vite.config.ts before that file runs `dotenv.config()`,
-// so load repo `.env` here using `__dirname` (always `â€¦/api`, never a Vite temp path).
+// so merge repo `.env` here using `__dirname` (always `â€¦/api`, never a Vite temp path).
+// Always load (no early exit): if GOOGLE_APPS_SCRIPT_URL is already set but
+// GOOGLE_APPS_SCRIPT_URL_2 exists only in `.env`, skipping would drop the second URL.
 (function loadRepoDotenv() {
-  const hasUrl =
-    (process.env.GOOGLE_APPS_SCRIPT_URL || "").trim() ||
-    (process.env.FORM_WEBHOOK_URL || "").trim();
-  if (hasUrl) return;
   const root = path.join(__dirname, "..");
   const tryLoad = (name, override) => {
     const p = path.join(root, name);
@@ -84,7 +82,7 @@ function normalizeWebAppUrl(raw) {
   try {
     parsed = new URL(trimmed);
   } catch {
-    return { error: "GOOGLE_APPS_SCRIPT_URL is not a valid URL." };
+    return { error: "Apps Script Web App URL is not a valid URL." };
   }
   let path = parsed.pathname.replace(/\/+$/, "");
   if (path.endsWith("/dev")) {
@@ -93,11 +91,31 @@ function normalizeWebAppUrl(raw) {
   if (!path.endsWith("/exec")) {
     return {
       error:
-        'GOOGLE_APPS_SCRIPT_URL must end with /exec. In Apps Script: Deploy â†’ Manage deployments â†’ copy the Web app URL from that deployment (it ends with /exec). Do not use a URL ending in /dev, /2, or the script editor link.',
+        'Each Apps Script URL must end with /exec. In Apps Script: Deploy â†’ Manage deployments â†’ copy the Web app URL from that deployment (it ends with /exec). Do not use a URL ending in /dev, /2, or the script editor link.',
     };
   }
   parsed.pathname = path;
   return { url: parsed.href };
+}
+
+/**
+ * Multiple sheets: comma-separate URLs in GOOGLE_APPS_SCRIPT_URL and/or set GOOGLE_APPS_SCRIPT_URL_2.
+ * @returns {string[]}
+ */
+function collectRawAppsScriptUrls() {
+  const primary = getEnv("GOOGLE_APPS_SCRIPT_URL") || getEnv("FORM_WEBHOOK_URL");
+  const secondary = getEnv("GOOGLE_APPS_SCRIPT_URL_2");
+  /** @type {string[]} */
+  const raw = [];
+  if (primary) {
+    for (const chunk of primary.split(",")) {
+      const t = chunk.trim();
+      if (t) raw.push(t);
+    }
+  }
+  const s2 = secondary.trim();
+  if (s2) raw.push(s2);
+  return raw;
 }
 
 /** Safe label for sheet; default direct when missing or invalid. */
@@ -291,20 +309,27 @@ async function handler(req, res) {
       return jsonError(res, 400, "Invalid targeted roles");
     }
 
-    const rawScriptUrl =
-      getEnv("GOOGLE_APPS_SCRIPT_URL") || getEnv("FORM_WEBHOOK_URL");
-    if (!rawScriptUrl.trim()) {
+    const rawUrls = collectRawAppsScriptUrls();
+    if (rawUrls.length === 0) {
       return jsonError(
         res,
         500,
-        "GOOGLE_APPS_SCRIPT_URL is not set. Deploy a Web App from Google Apps Script and paste its URL (ends with /exec). See scripts/google-apps-script-append.gs in this repo.",
+        "No Apps Script URLs configured. Set GOOGLE_APPS_SCRIPT_URL (and optionally GOOGLE_APPS_SCRIPT_URL_2 for a second sheet). URLs must end with /exec. See scripts/google-apps-script-append.gs.",
       );
     }
-    const normalized = normalizeWebAppUrl(rawScriptUrl);
-    if ("error" in normalized) {
-      return jsonError(res, 400, normalized.error);
+    /** @type {string[]} */
+    const scriptUrls = [];
+    const seen = new Set();
+    for (const rawOne of rawUrls) {
+      const normalized = normalizeWebAppUrl(rawOne);
+      if ("error" in normalized) {
+        return jsonError(res, 400, normalized.error);
+      }
+      if (!seen.has(normalized.url)) {
+        seen.add(normalized.url);
+        scriptUrls.push(normalized.url);
+      }
     }
-    const scriptUrl = normalized.url;
 
     const utmSource = normalizeUtmSource(body.utm_source);
     const utmMedium = normalizeUtmField(body.utm_medium);
@@ -346,43 +371,52 @@ async function handler(req, res) {
     const bodyStr = JSON.stringify(payload);
 
     try {
-      const upstream = await postToGoogleAppsScriptWebApp(
-        scriptUrl,
-        headers,
-        bodyStr,
-      );
-      const text = await upstream.text();
-      if (!upstream.ok) {
-        return jsonError(
-          res,
-          502,
-          "Failed to save to sheet",
-          detailForAppsScriptFailure(upstream.status, text),
+      for (let u = 0; u < scriptUrls.length; u++) {
+        const scriptUrl = scriptUrls[u];
+        const upstream = await postToGoogleAppsScriptWebApp(
+          scriptUrl,
+          headers,
+          bodyStr,
         );
-      }
-      if (looksLikeHtml(text)) {
-        return jsonError(
-          res,
-          502,
-          "Failed to save to sheet",
-          detailForAppsScriptFailure(upstream.status, text),
-        );
-      }
-      try {
-        const parsed = JSON.parse(text);
-        if (parsed && parsed.ok === false) {
-          if (isDuplicateEmailError(parsed)) {
-            return jsonError(res, 409, "You already filled this form.");
-          }
+        const text = await upstream.text();
+        if (!upstream.ok) {
           return jsonError(
             res,
             502,
             "Failed to save to sheet",
-            String(parsed.error || "Sheet script error").slice(0, 200),
+            scriptUrls.length > 1
+              ? `${detailForAppsScriptFailure(upstream.status, text)} (destination ${u + 1}/${scriptUrls.length})`
+              : detailForAppsScriptFailure(upstream.status, text),
           );
         }
-      } catch {
-        /* non-JSON success body is OK for some deployments */
+        if (looksLikeHtml(text)) {
+          return jsonError(
+            res,
+            502,
+            "Failed to save to sheet",
+            scriptUrls.length > 1
+              ? `${detailForAppsScriptFailure(upstream.status, text)} (destination ${u + 1}/${scriptUrls.length})`
+              : detailForAppsScriptFailure(upstream.status, text),
+          );
+        }
+        try {
+          const parsed = JSON.parse(text);
+          if (parsed && parsed.ok === false) {
+            if (isDuplicateEmailError(parsed)) {
+              return jsonError(res, 409, "You already filled this form.");
+            }
+            return jsonError(
+              res,
+              502,
+              "Failed to save to sheet",
+              scriptUrls.length > 1
+                ? `${String(parsed.error || "Sheet script error").slice(0, 200)} (destination ${u + 1}/${scriptUrls.length})`
+                : String(parsed.error || "Sheet script error").slice(0, 200),
+            );
+          }
+        } catch {
+          /* non-JSON success body is OK for some deployments */
+        }
       }
     } catch (e) {
       return jsonError(

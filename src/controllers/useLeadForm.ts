@@ -156,9 +156,16 @@ export function useLeadForm(options?: UseLeadFormOptions) {
       });
 
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
+        const body = (await res.json().catch(() => null)) as {
+          error?: string;
+          detail?: string;
+        } | null;
+        const combined =
+          body?.detail && body.detail !== body.error
+            ? `${body.error ?? "Error"} — ${body.detail}`
+            : body?.error || body?.detail;
         const errorMessage =
-          (body && (body.error || body.detail)) ||
+          combined ||
           "Something went wrong while submitting your details. Please try again.";
         options?.onError?.({
           id: Date.now(),

@@ -5,6 +5,7 @@
  *   Who has access: Anyone  â† required for server POSTs (no Google login); not "Only myself"
  * After any code change: Deploy â†’ Manage deployments â†’ âœŽ on the Web app â†’ Version "New version" â†’ Deploy.
  * Copy the Web app URL (ends with /exec) into GOOGLE_APPS_SCRIPT_URL.
+ * For a second sheet, set GOOGLE_APPS_SCRIPT_URL_2 to the other /exec URL (same secret in both scripts).
  * External clients: POST once to that URL, then follow the 302 with GET (POST again â†’ 405).
  *
  * Sheet row 1 headers (Sheet1): Submitted at | Name | email | phone | university | current_role | targeted_role | whatsapp | linkedin | utm_source | utm_medium | utm_campaign | utm_adset | utm_content | utm_term | utm_placement
