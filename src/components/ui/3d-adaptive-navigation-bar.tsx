@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { scrollToElementById } from "@/lib/safe-scroll";
 
 interface NavItem {
   label: string;
@@ -21,10 +22,7 @@ export const PillBase: React.FC = () => {
   ];
 
   const scrollToSection = (sectionId: string) => {
-    const el = document.getElementById(sectionId);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
+    scrollToElementById(sectionId);
   };
 
   const handleSectionClick = (sectionId: string) => {

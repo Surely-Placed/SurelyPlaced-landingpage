@@ -23,11 +23,16 @@ function getFlagUrl(iso2: string): string {
 }
 
 function buildCountries(): CountryItem[] {
-  const display = new Intl.DisplayNames(["en"], { type: "region" });
+  let display: Intl.DisplayNames | null = null;
+  try {
+    display = new Intl.DisplayNames(["en"], { type: "region" });
+  } catch {
+    display = null;
+  }
   return getCountries()
     .map((iso2) => ({
       iso2,
-      name: display.of(iso2) || iso2,
+      name: display?.of(iso2) || iso2,
       dialCode: `+${getCountryCallingCode(iso2)}`,
     }))
     .sort((a, b) => a.name.localeCompare(b.name));

@@ -5,17 +5,20 @@ import { cn } from "@/lib/utils";
 import { MenuToggleIcon } from "@/components/ui/menu-toggle-icon";
 import { useScroll } from "@/components/ui/use-scroll";
 import { SurelyPlacedLogo } from "@/components/Logo";
+import { scrollToElementById } from "@/lib/safe-scroll";
 import { createPortal } from "react-dom";
 
 export function Header() {
   const [open, setOpen] = React.useState(false);
   const scrolled = useScroll(10);
   const scrollToSection = React.useCallback((sectionId: string) => {
-    const el = document.getElementById(sectionId);
-    if (!el) return;
-    el.scrollIntoView({ behavior: "smooth", block: "start" });
-    const cleanUrl = `${window.location.pathname}${window.location.search}`;
-    window.history.replaceState(null, "", cleanUrl);
+    scrollToElementById(sectionId);
+    try {
+      const cleanUrl = `${window.location.pathname}${window.location.search}`;
+      window.history.replaceState(null, "", cleanUrl);
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   const links = [
@@ -69,7 +72,7 @@ export function Header() {
       <nav className="mx-auto flex h-20 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
         <button
           type="button"
-          className="flex items-center gap-2"
+          className="flex touch-manipulation items-center gap-2"
           onClick={() => scrollToSection("home")}
         >
           <SurelyPlacedLogo className="h-16 w-auto sm:h-18" />
@@ -79,7 +82,7 @@ export function Header() {
             <button
               type="button"
               key={link.label}
-              className={buttonVariants({ variant: "ghost" })}
+              className={`${buttonVariants({ variant: "ghost" })} touch-manipulation`}
               onClick={() => scrollToSection(link.sectionId)}
             >
               {link.label}
@@ -92,7 +95,7 @@ export function Header() {
           size="icon"
           variant="outline"
           onClick={() => setOpen(!open)}
-          className="md:hidden"
+          className="touch-manipulation md:hidden"
           aria-expanded={open}
           aria-controls="mobile-menu"
           aria-label="Toggle menu"
@@ -108,7 +111,8 @@ export function Header() {
               key={link.label}
               className={buttonVariants({
                 variant: "ghost",
-                className: "justify-start",
+                className:
+                  "touch-manipulation min-h-11 justify-start py-3 text-base sm:text-sm",
               })}
               onClick={() => {
                 scrollToSection(link.sectionId);

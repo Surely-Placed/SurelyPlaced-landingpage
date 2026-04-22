@@ -20,6 +20,38 @@ const STORAGE_KEY_BY_FIELD: Record<UtmField, string> = {
   utm_placement: "sp_utm_placement",
 };
 
+/** Fallback when sessionStorage throws (LinkedIn / Instagram in-app browsers, strict WebViews). */
+let memorySession: Map<string, string> | null = null;
+
+function memoryFallback(): Map<string, string> {
+  if (!memorySession) memorySession = new Map();
+  return memorySession;
+}
+
+function ssGet(key: string): string | null {
+  try {
+    return sessionStorage.getItem(key);
+  } catch {
+    return memoryFallback().get(key) ?? null;
+  }
+}
+
+function ssSet(key: string, value: string): void {
+  try {
+    sessionStorage.setItem(key, value);
+  } catch {
+    memoryFallback().set(key, value);
+  }
+}
+
+function ssRemove(key: string): void {
+  try {
+    sessionStorage.removeItem(key);
+  } catch {
+    memoryFallback().delete(key);
+  }
+}
+
 /** Query string from the main URL or from the hash (e.g. `/#/?utm_source=linkedin`). */
 function getUtmParamsFromLocation(): Partial<UtmPayload> {
   const out: Partial<UtmPayload> = {};
@@ -130,52 +162,57 @@ function isGoogleHostname(host: string): boolean {
 export function syncUtmFromCurrentUrl(): void {
   if (typeof window === "undefined") return;
 
-  const fromUrl = getUtmParamsFromLocation();
-  const adsClick = hasGoogleAdsClickIdInLocation();
+  try {
+    const fromUrl = getUtmParamsFromLocation();
+    const adsClick = hasGoogleAdsClickIdInLocation();
 
-  if (Object.keys(fromUrl).length > 0 || adsClick) {
-    sessionStorage.removeItem(IGNORE_REFERRER_UNTIL_UTM_KEY);
-    for (const key of UTM_FIELDS) {
-      const raw = fromUrl[key];
-      if (!raw) continue;
-      const value = key === "utm_source" ? canonicalizeUtmSource(raw).slice(0, 120) : raw.slice(0, 180);
-      sessionStorage.setItem(STORAGE_KEY_BY_FIELD[key], value);
-    }
-    const src = sessionStorage.getItem(STORAGE_KEY_BY_FIELD.utm_source);
-    if ((!src || !src.trim()) && adsClick) {
-      sessionStorage.setItem(STORAGE_KEY_BY_FIELD.utm_source, "google");
-    }
-    return;
-  }
-
-  const hasExisting = UTM_FIELDS.some((key) => {
-    const v = sessionStorage.getItem(STORAGE_KEY_BY_FIELD[key]);
-    return v != null && v.trim().length > 0;
-  });
-
-  // If this session already has a source but the current visit is an
-  // untagged organic Google search (no utm_*, no ad click IDs, referrer = google),
-  // we *downgrade* the source to "direct" instead of keeping a sticky "google".
-  if (hasExisting) {
-    try {
-      const currentSourceRaw = sessionStorage.getItem(STORAGE_KEY_BY_FIELD.utm_source) || "";
-      const currentSource = currentSourceRaw.trim().toLowerCase();
-      const ref = typeof document !== "undefined" ? document.referrer : "";
-      const refHost = ref ? new URL(ref).hostname.toLowerCase().replace(/^www\./, "") : "";
-      if (!adsClick && currentSource === "google" && refHost && isGoogleHostname(refHost)) {
-        sessionStorage.setItem(STORAGE_KEY_BY_FIELD.utm_source, "direct");
+    if (Object.keys(fromUrl).length > 0 || adsClick) {
+      ssRemove(IGNORE_REFERRER_UNTIL_UTM_KEY);
+      for (const key of UTM_FIELDS) {
+        const raw = fromUrl[key];
+        if (!raw) continue;
+        const value =
+          key === "utm_source" ? canonicalizeUtmSource(raw).slice(0, 120) : raw.slice(0, 180);
+        ssSet(STORAGE_KEY_BY_FIELD[key], value);
       }
-    } catch {
-      // best-effort only
+      const src = ssGet(STORAGE_KEY_BY_FIELD.utm_source);
+      if ((!src || !src.trim()) && adsClick) {
+        ssSet(STORAGE_KEY_BY_FIELD.utm_source, "google");
+      }
+      return;
     }
-    return;
-  }
 
-  if (sessionStorage.getItem(IGNORE_REFERRER_UNTIL_UTM_KEY) === "1") return;
+    const hasExisting = UTM_FIELDS.some((key) => {
+      const v = ssGet(STORAGE_KEY_BY_FIELD[key]);
+      return v != null && v.trim().length > 0;
+    });
 
-  const inferred = inferSourceFromReferrer();
-  if (inferred != null) {
-    sessionStorage.setItem(STORAGE_KEY_BY_FIELD.utm_source, canonicalizeUtmSource(inferred));
+    // If this session already has a source but the current visit is an
+    // untagged organic Google search (no utm_*, no ad click IDs, referrer = google),
+    // we *downgrade* the source to "direct" instead of keeping a sticky "google".
+    if (hasExisting) {
+      try {
+        const currentSourceRaw = ssGet(STORAGE_KEY_BY_FIELD.utm_source) || "";
+        const currentSource = currentSourceRaw.trim().toLowerCase();
+        const ref = typeof document !== "undefined" ? document.referrer : "";
+        const refHost = ref ? new URL(ref).hostname.toLowerCase().replace(/^www\./, "") : "";
+        if (!adsClick && currentSource === "google" && refHost && isGoogleHostname(refHost)) {
+          ssSet(STORAGE_KEY_BY_FIELD.utm_source, "direct");
+        }
+      } catch {
+        // best-effort only
+      }
+      return;
+    }
+
+    if (ssGet(IGNORE_REFERRER_UNTIL_UTM_KEY) === "1") return;
+
+    const inferred = inferSourceFromReferrer();
+    if (inferred != null) {
+      ssSet(STORAGE_KEY_BY_FIELD.utm_source, canonicalizeUtmSource(inferred));
+    }
+  } catch {
+    /* attribution is best-effort; never break the page in embedded browsers */
   }
 }
 
@@ -183,7 +220,7 @@ export function syncUtmFromCurrentUrl(): void {
 export function getUtmSourceForSubmit(): string {
   if (typeof window === "undefined") return "direct";
   syncUtmFromCurrentUrl();
-  const stored = sessionStorage.getItem(STORAGE_KEY_BY_FIELD.utm_source);
+  const stored = ssGet(STORAGE_KEY_BY_FIELD.utm_source);
   if (stored != null && stored.trim().length > 0) {
     return canonicalizeUtmSource(stored);
   }
@@ -205,7 +242,7 @@ export function getUtmFieldsForSubmit(): UtmPayload {
   }
   syncUtmFromCurrentUrl();
   const read = (key: UtmField) => {
-    const v = sessionStorage.getItem(STORAGE_KEY_BY_FIELD[key]);
+    const v = ssGet(STORAGE_KEY_BY_FIELD[key]);
     return v != null && v.trim().length > 0 ? v.trim() : "";
   };
   return {
@@ -228,9 +265,9 @@ export function clearStoredUtmSource(): void {
   if (typeof window === "undefined") return;
   try {
     for (const key of UTM_FIELDS) {
-      sessionStorage.removeItem(STORAGE_KEY_BY_FIELD[key]);
+      ssRemove(STORAGE_KEY_BY_FIELD[key]);
     }
-    sessionStorage.setItem(IGNORE_REFERRER_UNTIL_UTM_KEY, "1");
+    ssSet(IGNORE_REFERRER_UNTIL_UTM_KEY, "1");
   } catch {
     /* ignore */
   }

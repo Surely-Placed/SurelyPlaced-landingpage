@@ -1,4 +1,5 @@
 import { SurelyPlacedLogo } from "@/components/Logo";
+import { scrollToElementById } from "@/lib/safe-scroll";
 
 const companyLinks = [
   { label: "About Us", sectionId: "benefits" },
@@ -73,11 +74,13 @@ function MapPinIcon({ className }: { className?: string }) {
 
 export function Footer() {
   const scrollToSection = (sectionId: string) => {
-    const el = document.getElementById(sectionId);
-    if (!el) return;
-    el.scrollIntoView({ behavior: "smooth", block: "start" });
-    const cleanUrl = `${window.location.pathname}${window.location.search}`;
-    window.history.replaceState(null, "", cleanUrl);
+    scrollToElementById(sectionId);
+    try {
+      const cleanUrl = `${window.location.pathname}${window.location.search}`;
+      window.history.replaceState(null, "", cleanUrl);
+    } catch {
+      /* ignore */
+    }
   };
 
   return (

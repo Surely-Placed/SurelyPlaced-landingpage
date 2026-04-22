@@ -153,6 +153,9 @@ export function useLeadForm(options?: UseLeadFormOptions) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
+        credentials: "same-origin",
+        // Helps in-app browsers (LinkedIn, etc.) when the tab is backgrounded right after tap.
+        keepalive: true,
       });
 
       if (!res.ok) {
