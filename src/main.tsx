@@ -5,6 +5,8 @@ import "./index.css";
 
 const GTM_ID = "GTM-KFR5Z8BD";
 const CLARITY_ID = "w2hgz3m500";
+let gtmLoaded = false;
+let clarityLoaded = false;
 
 function injectScript(src: string): void {
   if (document.querySelector(`script[src="${src}"]`)) return;
@@ -14,15 +16,29 @@ function injectScript(src: string): void {
   document.head.appendChild(script);
 }
 
-function loadTrackingScripts(): void {
-  if (typeof window === "undefined") return;
-  // Avoid blocking first paint in mobile webviews.
-  if (!(window as any).dataLayer) {
-    (window as any).dataLayer = [];
+function runWhenIdle(task: () => void, timeoutMs: number): void {
+  const idle = (window as any).requestIdleCallback as
+    | ((cb: () => void, opts?: { timeout: number }) => number)
+    | undefined;
+  if (idle) {
+    idle(task, { timeout: timeoutMs });
+    return;
   }
-  (window as any).dataLayer.push({ "gtm.start": Date.now(), event: "gtm.js" });
-  injectScript(`https://www.googletagmanager.com/gtm.js?id=${GTM_ID}`);
+  window.setTimeout(task, timeoutMs);
+}
 
+function loadGtm(): void {
+  if (typeof window === "undefined" || gtmLoaded) return;
+  gtmLoaded = true;
+  const w = window as any;
+  if (!w.dataLayer) w.dataLayer = [];
+  w.dataLayer.push({ "gtm.start": Date.now(), event: "gtm.js" });
+  injectScript(`https://www.googletagmanager.com/gtm.js?id=${GTM_ID}`);
+}
+
+function loadClarity(): void {
+  if (typeof window === "undefined" || clarityLoaded) return;
+  clarityLoaded = true;
   const w = window as any;
   if (!w.clarity) {
     w.clarity = function (...args: any[]) {
@@ -33,15 +49,28 @@ function loadTrackingScripts(): void {
 }
 
 function scheduleTrackingLoad(): void {
-  const run = () => {
-    const idle = (window as any).requestIdleCallback as
-      | ((cb: () => void, opts?: { timeout: number }) => number)
-      | undefined;
-    if (idle) {
-      idle(loadTrackingScripts, { timeout: 4000 });
-      return;
+  const onEngagement = () => {
+    runWhenIdle(loadClarity, 2500);
+    detach();
+  };
+  const events: Array<keyof WindowEventMap> = ["pointerdown", "keydown", "touchstart", "scroll"];
+  const detach = () => {
+    for (const evt of events) {
+      window.removeEventListener(evt, onEngagement);
     }
-    window.setTimeout(loadTrackingScripts, 2500);
+  };
+  for (const evt of events) {
+    window.addEventListener(evt, onEngagement, { once: true, passive: true });
+  }
+
+  const run = () => {
+    // Hybrid: keep conversion/ads attribution reasonably timely.
+    runWhenIdle(loadGtm, 1200);
+    // Session replay is non-critical, so delay more for better TBT.
+    window.setTimeout(() => {
+      loadClarity();
+      detach();
+    }, 10000);
   };
   if (document.readyState === "complete") {
     run();
