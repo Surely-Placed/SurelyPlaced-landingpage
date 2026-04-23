@@ -50,7 +50,8 @@ function loadClarity(): void {
 
 function scheduleTrackingLoad(): void {
   const onEngagement = () => {
-    runWhenIdle(loadClarity, 2500);
+    runWhenIdle(loadGtm, 800);
+    runWhenIdle(loadClarity, 3500);
     detach();
   };
   const events: Array<keyof WindowEventMap> = ["pointerdown", "keydown", "touchstart", "scroll"];
@@ -64,13 +65,14 @@ function scheduleTrackingLoad(): void {
   }
 
   const run = () => {
-    // Hybrid: keep conversion/ads attribution reasonably timely.
-    runWhenIdle(loadGtm, 1200);
-    // Session replay is non-critical, so delay more for better TBT.
+    // Hybrid toward 90+: prefer interaction-triggered loading.
+    // Fallback still ensures scripts load for passive visitors.
+    window.setTimeout(loadGtm, 5000);
+    // Session replay is non-critical; delay further to protect mobile TBT.
     window.setTimeout(() => {
       loadClarity();
       detach();
-    }, 10000);
+    }, 15000);
   };
   if (document.readyState === "complete") {
     run();
