@@ -135,7 +135,7 @@ export function Hero(props: Props) {
                 <CountryCodePicker
                   value={form.countryCode}
                   onChange={onCountryCodeChange}
-                  className="h-10 w-32 justify-between rounded-lg border-slate-200 bg-white px-2"
+                  className=""
                 />
                 <input
                   type="tel"
@@ -159,7 +159,7 @@ export function Hero(props: Props) {
                   <CountryCodePicker
                     value={form.whatsappCountryCode}
                     onChange={onWhatsappCountryCodeChange}
-                    className="h-10 w-32 justify-between rounded-lg border-slate-200 bg-white px-2"
+                    className=""
                   />
                   <input
                     type="tel"

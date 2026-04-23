@@ -5,7 +5,6 @@
  *   Who has access: Anyone  â† required for server POSTs (no Google login); not "Only myself"
  * After any code change: Deploy â†’ Manage deployments â†’ âœŽ on the Web app â†’ Version "New version" â†’ Deploy.
  * Copy the Web app URL (ends with /exec) into GOOGLE_APPS_SCRIPT_URL.
- * For a second sheet, set GOOGLE_APPS_SCRIPT_URL_2 to the other /exec URL (same secret in both scripts).
  * External clients: POST once to that URL, then follow the 302 with GET (POST again â†’ 405).
  *
  * Sheet row 1 headers (Sheet1): Submitted at | Name | email | phone | university | current_role | targeted_role | whatsapp | linkedin | utm_source | utm_medium | utm_campaign | utm_adset | utm_content | utm_term | utm_placement
@@ -22,14 +21,26 @@ function normalizeEmailForMatch(value) {
   return String(value || "").trim().toLowerCase();
 }
 
+function hasDuplicateEmail(sheet, normalizedEmail) {
+  const lastRow = sheet.getLastRow();
+  if (!normalizedEmail || lastRow < 2) return false;
+  const emailRange = sheet.getRange(2, 3, lastRow - 1, 1);
+  const hit = emailRange
+    .createTextFinder(normalizedEmail)
+    .matchCase(false)
+    .matchEntireCell(true)
+    .useRegularExpression(false)
+    .findNext();
+  return Boolean(hit);
+}
+
 function doPost(e) {
   const out = ContentService.createTextOutput();
   out.setMimeType(ContentService.MimeType.JSON);
   const lock = LockService.getDocumentLock();
+  var lockAcquired = false;
 
   try {
-    lock.waitLock(30000);
-
     if (!e.postData || !e.postData.contents) {
       out.setContent(JSON.stringify({ ok: false, error: "No body" }));
       return out;
@@ -47,23 +58,15 @@ function doPost(e) {
       SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
 
     const normalizedEmail = normalizeEmailForMatch(data.email);
-    if (normalizedEmail) {
-      const lastRow = sheet.getLastRow();
-      if (lastRow >= 2) {
-        const existingEmails = sheet.getRange(2, 3, lastRow - 1, 1).getValues();
-        for (var i = 0; i < existingEmails.length; i++) {
-          if (normalizeEmailForMatch(existingEmails[i][0]) === normalizedEmail) {
-            out.setContent(
-              JSON.stringify({
-                ok: false,
-                error: "DUPLICATE_EMAIL",
-                message: "You already filled this form.",
-              }),
-            );
-            return out;
-          }
-        }
-      }
+    if (hasDuplicateEmail(sheet, normalizedEmail)) {
+      out.setContent(
+        JSON.stringify({
+          ok: false,
+          error: "DUPLICATE_EMAIL",
+          message: "You already filled this form.",
+        }),
+      );
+      return out;
     }
 
     const tz = Session.getScriptTimeZone() || "Asia/Kolkata";
@@ -86,10 +89,14 @@ function doPost(e) {
       whatsappCell = "'" + whatsappCell;
     }
 
+    // Lock only during the final sheet write to reduce queue time under load.
+    lock.waitLock(5000);
+    lockAcquired = true;
+
     sheet.appendRow([
       submittedAtSimple,
       data.name || "",
-      data.email || "",
+      normalizedEmail || data.email || "",
       phoneCell,
       data.college || "",
       data.current_role || data.role || "",
@@ -117,7 +124,9 @@ function doPost(e) {
     return out;
   } finally {
     try {
-      lock.releaseLock();
+      if (lockAcquired) {
+        lock.releaseLock();
+      }
     } catch {
       // no-op
     }

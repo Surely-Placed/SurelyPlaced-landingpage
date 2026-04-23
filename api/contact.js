@@ -6,8 +6,7 @@ const fs = require("node:fs");
 
 // This file is imported from vite.config.ts before that file runs `dotenv.config()`,
 // so merge repo `.env` here using `__dirname` (always `â€¦/api`, never a Vite temp path).
-// Always load (no early exit): if GOOGLE_APPS_SCRIPT_URL is already set but
-// GOOGLE_APPS_SCRIPT_URL_2 exists only in `.env`, skipping would drop the second URL.
+// Always load repo-level env values for local and serverless runs.
 (function loadRepoDotenv() {
   const root = path.join(__dirname, "..");
   const tryLoad = (name, override) => {
@@ -96,44 +95,6 @@ function normalizeWebAppUrl(raw) {
   }
   parsed.pathname = path;
   return { url: parsed.href };
-}
-
-/**
- * Split env value into multiple Web App URLs (comma, newline, semicolon; strips BOM/quotes).
- * @param {string} raw
- * @returns {string[]}
- */
-function splitUrlEnvList(raw) {
-  if (!raw) return [];
-  return raw
-    .split(/[,;\n\r\uFF0C]+/g)
-    .map((chunk) =>
-      chunk
-        .replace(/^\uFEFF/, "")
-        .trim()
-        .replace(/^["']+|["']+$/g, "")
-        .trim(),
-    )
-    .filter(Boolean);
-}
-
-/**
- * Multiple sheets: separate URLs with comma, newline, or semicolon in GOOGLE_APPS_SCRIPT_URL,
- * and/or set GOOGLE_APPS_SCRIPT_URL_2.
- * @returns {string[]}
- */
-function collectRawAppsScriptUrls() {
-  const primary = getEnv("GOOGLE_APPS_SCRIPT_URL") || getEnv("FORM_WEBHOOK_URL");
-  const secondary = getEnv("GOOGLE_APPS_SCRIPT_URL_2");
-  /** @type {string[]} */
-  const raw = [];
-  for (const chunk of splitUrlEnvList(primary)) {
-    raw.push(chunk);
-  }
-  for (const chunk of splitUrlEnvList(secondary)) {
-    raw.push(chunk);
-  }
-  return raw;
 }
 
 /** Safe label for sheet; default direct when missing or invalid. */
@@ -245,6 +206,54 @@ function isDuplicateEmailError(parsed) {
 }
 
 /**
+ * @param {Response} upstream
+ * @param {string} text
+ * @param {number} indexZeroBased
+ * @returns {{ ok: true } | { ok: false, status: number, detail: string, duplicate: boolean }}
+ */
+function inspectAppsScriptResult(upstream, text, indexZeroBased) {
+  const suffix = indexZeroBased > 0 ? ` (destination ${indexZeroBased + 1})` : "";
+  if (!upstream.ok) {
+    return {
+      ok: false,
+      status: 502,
+      duplicate: false,
+      detail: `${detailForAppsScriptFailure(upstream.status, text)}${suffix}`,
+    };
+  }
+  if (looksLikeHtml(text)) {
+    return {
+      ok: false,
+      status: 502,
+      duplicate: false,
+      detail: `${detailForAppsScriptFailure(upstream.status, text)}${suffix}`,
+    };
+  }
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed && parsed.ok === false) {
+      if (isDuplicateEmailError(parsed)) {
+        return {
+          ok: false,
+          status: 409,
+          duplicate: true,
+          detail: "You already filled this form.",
+        };
+      }
+      return {
+        ok: false,
+        status: 502,
+        duplicate: false,
+        detail: `${String(parsed.error || "Sheet script error").slice(0, 200)}${suffix}`,
+      };
+    }
+  } catch {
+    /* non-JSON success body is OK for some deployments */
+  }
+  return { ok: true };
+}
+
+/**
  * Vercel Node.js API route handler (CommonJS)
  * @param {import('http').IncomingMessage & { body?: Body; method?: string; headers?: any; socket: any }} req
  * @param {import('http').ServerResponse} res
@@ -334,27 +343,24 @@ async function handler(req, res) {
       return jsonError(res, 400, "Invalid targeted roles");
     }
 
-    const rawUrls = collectRawAppsScriptUrls();
-    if (rawUrls.length === 0) {
+    const rawScriptUrl =
+      (getEnv("GOOGLE_APPS_SCRIPT_URL") || getEnv("FORM_WEBHOOK_URL"))
+        .replace(/^\uFEFF/, "")
+        .trim()
+        .replace(/^["']+|["']+$/g, "")
+        .trim();
+    if (!rawScriptUrl) {
       return jsonError(
         res,
         500,
-        "No Apps Script URLs configured. Set GOOGLE_APPS_SCRIPT_URL (and optionally GOOGLE_APPS_SCRIPT_URL_2 for a second sheet). URLs must end with /exec. See scripts/google-apps-script-append.gs.",
+        "GOOGLE_APPS_SCRIPT_URL is not set. Deploy a Web App from Google Apps Script and paste its URL (ends with /exec). See scripts/google-apps-script-append.gs in this repo.",
       );
     }
-    /** @type {string[]} */
-    const scriptUrls = [];
-    const seen = new Set();
-    for (const rawOne of rawUrls) {
-      const normalized = normalizeWebAppUrl(rawOne);
-      if ("error" in normalized) {
-        return jsonError(res, 400, normalized.error);
-      }
-      if (!seen.has(normalized.url)) {
-        seen.add(normalized.url);
-        scriptUrls.push(normalized.url);
-      }
+    const normalizedScriptUrl = normalizeWebAppUrl(rawScriptUrl);
+    if ("error" in normalizedScriptUrl) {
+      return jsonError(res, 400, normalizedScriptUrl.error);
     }
+    const scriptUrl = normalizedScriptUrl.url;
 
     const utmSource = normalizeUtmSource(body.utm_source);
     const utmMedium = normalizeUtmField(body.utm_medium);
@@ -396,66 +402,14 @@ async function handler(req, res) {
     const bodyStr = JSON.stringify(payload);
 
     try {
-      const total = scriptUrls.length;
-      const settled = await Promise.allSettled(
-        scriptUrls.map((scriptUrl) =>
-          postToGoogleAppsScriptWebApp(scriptUrl, headers, bodyStr).then(async (upstream) => ({
-            upstream,
-            text: await upstream.text(),
-          })),
-        ),
-      );
-
-      for (let u = 0; u < settled.length; u++) {
-        const entry = settled[u];
-        if (entry.status === "rejected") {
-          const msg = entry.reason instanceof Error ? entry.reason.message : String(entry.reason);
-          return jsonError(
-            res,
-            502,
-            "Failed to save to sheet",
-            total > 1 ? `${msg} (destination ${u + 1}/${total})` : msg,
-          );
+      const primaryResponse = await postToGoogleAppsScriptWebApp(scriptUrl, headers, bodyStr);
+      const primaryText = await primaryResponse.text();
+      const primaryResult = inspectAppsScriptResult(primaryResponse, primaryText, 0);
+      if (!primaryResult.ok) {
+        if (primaryResult.duplicate) {
+          return jsonError(res, 409, primaryResult.detail);
         }
-        const { upstream, text } = entry.value;
-        if (!upstream.ok) {
-          return jsonError(
-            res,
-            502,
-            "Failed to save to sheet",
-            total > 1
-              ? `${detailForAppsScriptFailure(upstream.status, text)} (destination ${u + 1}/${total})`
-              : detailForAppsScriptFailure(upstream.status, text),
-          );
-        }
-        if (looksLikeHtml(text)) {
-          return jsonError(
-            res,
-            502,
-            "Failed to save to sheet",
-            total > 1
-              ? `${detailForAppsScriptFailure(upstream.status, text)} (destination ${u + 1}/${total})`
-              : detailForAppsScriptFailure(upstream.status, text),
-          );
-        }
-        try {
-          const parsed = JSON.parse(text);
-          if (parsed && parsed.ok === false) {
-            if (isDuplicateEmailError(parsed)) {
-              return jsonError(res, 409, "You already filled this form.");
-            }
-            return jsonError(
-              res,
-              502,
-              "Failed to save to sheet",
-              total > 1
-                ? `${String(parsed.error || "Sheet script error").slice(0, 200)} (destination ${u + 1}/${total})`
-                : String(parsed.error || "Sheet script error").slice(0, 200),
-            );
-          }
-        } catch {
-          /* non-JSON success body is OK for some deployments */
-        }
+        return jsonError(res, primaryResult.status, "Failed to save to sheet", primaryResult.detail);
       }
     } catch (e) {
       return jsonError(
@@ -471,7 +425,6 @@ async function handler(req, res) {
     return res.end(
       JSON.stringify({
         ok: true,
-        destinations: scriptUrls.length,
       }),
     );
   } catch {

@@ -1,11 +1,21 @@
+import { Suspense, lazy } from "react";
 import { Header } from "../components/layout/Header";
 import { Footer } from "../components/layout/Footer";
 import { Hero } from "../components/sections/Hero";
-import { SocialProof } from "../components/sections/SocialProof";
-import { Benefits } from "../components/sections/Benefits";
-import { Programs } from "../components/sections/Programs";
-import { Testimonials } from "../components/sections/Testimonials";
-import { Faq } from "../components/sections/Faq";
+
+const SocialProof = lazy(() =>
+  import("../components/sections/SocialProof").then((m) => ({ default: m.SocialProof })),
+);
+const Benefits = lazy(() =>
+  import("../components/sections/Benefits").then((m) => ({ default: m.Benefits })),
+);
+const Programs = lazy(() =>
+  import("../components/sections/Programs").then((m) => ({ default: m.Programs })),
+);
+const Testimonials = lazy(() =>
+  import("../components/sections/Testimonials").then((m) => ({ default: m.Testimonials })),
+);
+const Faq = lazy(() => import("../components/sections/Faq").then((m) => ({ default: m.Faq })));
 
 type Props = {
   heroForm: import("../models/lead").LeadFormValues;
@@ -38,11 +48,13 @@ export function LandingPage({
           onWhatsappCountryCodeChange={heroOnWhatsappCountryCodeChange}
           onSubmit={heroOnSubmit}
         />
-        <SocialProof />
-        <Benefits />
-        <Programs />
-        <Testimonials />
-        <Faq />
+        <Suspense fallback={null}>
+          <SocialProof />
+          <Benefits />
+          <Programs />
+          <Testimonials />
+          <Faq />
+        </Suspense>
       </main>
       <Footer />
     </div>

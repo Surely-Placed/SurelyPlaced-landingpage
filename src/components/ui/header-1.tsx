@@ -75,7 +75,7 @@ export function Header() {
           className="flex touch-manipulation items-center gap-2"
           onClick={() => scrollToSection("home")}
         >
-          <SurelyPlacedLogo className="h-16 w-auto sm:h-18" />
+          <SurelyPlacedLogo priority className="h-16 w-auto sm:h-18" />
         </button>
         <div className="hidden items-center gap-2 md:flex">
           {links.map((link) => (
